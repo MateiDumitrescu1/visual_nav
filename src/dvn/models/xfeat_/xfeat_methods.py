@@ -31,16 +31,13 @@ class XFeatModel:
     def prepare_np_array_image_for_xfeat(self, img_src: np.ndarray) -> np.ndarray:
         return np.copy(img_src[..., ::-1])
 
-    
-    @no_type_check
     def xfeat_detect_and_compute(self, image: np.ndarray, top_k: int = 4096) -> dict:
         """
         Detect and compute features using XFeat.
         """
         # Prepare the image for XFeat
         im = self.prepare_np_array_image_for_xfeat(image)
-        # pyrefly: ignore  # missing-attribute
-        output = self.xfeat.detectAndCompute(im, top_k=top_k)[0]
+        output = self.xfeat.detectAndCompute(im, top_k=top_k)[0] # pyright: ignore[reportAttributeAccessIssue]
         output.update({'image_size': (im.shape[1], im.shape[0])})    
         return output
 
@@ -54,51 +51,58 @@ class XFeatModel:
         # 
         top_k: int = 4096,
         draw_match_lines: bool = True # New parameter
-    ) -> np.ndarray:
+    ) -> tuple[Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], Optional[float], Optional[int], Optional[np.ndarray]]:
         """
         Accepts either file paths or pre-loaded BGR arrays.
         ### Params:
-            image1: First image as a numpy array (BGR format).
-            feat1: Precomputed features for the first image (or None to compute).
+            - image1: First image as a numpy array (BGR format).
+            - feat1: Precomputed features for the first image (or None to compute).
             ---
-            image2: Second image as a numpy array (BGR format).
-            feat2: Precomputed features for the second image (or None to compute).
+            - image2: Second image as a numpy array (BGR format).
+            - feat2: Precomputed features for the second image (or None to compute).
             ---
-            top_k: Number of top features to consider (default 4096).
-            draw_match_lines: If True, draws lines between matched keypoints in the output.
+            - top_k: Number of top features to consider (default 4096).
+            - draw_match_lines: If True, draws lines between matched keypoints in the output.
         ### Returns:
+        a tuple with:
+        - **The output image** `(np.ndarray | None)`: 
+            - If draw_match_lines is True: A combined image showing img1 and img2
+                side-by-side with match lines and the warped polygon.
+            - If draw_match_lines is False: img2 with the warped polygon drawn on it.
+            - None if less than 4 matches are found.
+        - Matched keypoints from the first image `(np.ndarray | None) (shape (N, 2)`. None if less than 4 matches are found.
+        - Matched keypoints from the second image `(np.ndarray | None) (shape (N, 2)`. None if less than 4 matches are found.
+        - float | None: The ratio of inlier matches (inliers / total matches). None if less than 4 matches are found.
+        - int | None: The number of matches found. None if less than 4 matches are found.
+        - np.ndarray | None: warped_corners: The warped corner points of img1 in img2's space. None if less than 4 matches are found.
         """
         # prepare images
 
         im1 = self.prepare_np_array_image_for_xfeat(image1)
         output0 = feat1
         if feat1 is None:
-            # pyrefly: ignore  # missing-attribute
-            output0 = self.xfeat.detectAndCompute(im1, top_k=top_k)[0]
+            output0 = self.xfeat.detectAndCompute(im1, top_k=top_k)[0] # pyright: ignore[reportAttributeAccessIssue]
 
-        
         im2 = self.prepare_np_array_image_for_xfeat(image2)
         output1 = feat2
         if feat2 is None:
-            # pyrefly: ignore  # missing-attribute
-            output1 = self.xfeat.detectAndCompute(im2, top_k=top_k)[0]
+            output1 = self.xfeat.detectAndCompute(im2, top_k=top_k)[0] # pyright: ignore[reportAttributeAccessIssue]
+
+        if output0 is None or output1 is None:
+            raise ValueError("Feature detection failed for one of the images.")
 
         output0.update({'image_size': (im1.shape[1], im1.shape[0])})
         output1.update({'image_size': (im2.shape[1], im2.shape[0])})
 
-        # pyrefly: ignore  # missing-attribute
-        mkpts_0, mkpts_1, _ = self.xfeat.match_lighterglue(output0, output1)
+        mkpts_0, mkpts_1, _ = self.xfeat.match_lighterglue(output0, output1) # pyright: ignore[reportAttributeAccessIssue]
         nr_matches = len(mkpts_0)
         print(f"Number of matches: {nr_matches}")
 
         if nr_matches < 4:
-            # pyrefly: ignore  # bad-return
-            return None,None,None,None,None,None
+            return None,  None, None, None, None, None
 
-        # pyrefly: ignore  # bad-unpacking
         output_canvas,inlier_ratio,warped_corners = warp_corners_and_draw_matches(mkpts_0, mkpts_1, im1, im2,draw_match_lines)
 
-        # pyrefly: ignore  # bad-return
         return output_canvas, mkpts_0, mkpts_1, inlier_ratio, nr_matches, warped_corners
 
 
