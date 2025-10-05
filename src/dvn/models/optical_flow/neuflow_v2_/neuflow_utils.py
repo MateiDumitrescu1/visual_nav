@@ -3,7 +3,6 @@ import tqdm
 import requests
 import cv2
 import numpy as np
-from .flow_plot import flow_to_image
 
 available_models = ["neuflow_mixed", "neuflow_sintel", "neuflow_things"]
 
@@ -29,18 +28,3 @@ def check_model(model_path: str):
     url = f"https://github.com/ibaiGorordo/ONNX-NeuFlowV2-Optical-Flow/releases/download/0.1.0/{model_name}.onnx"
     download_model(url, model_path)
 
-def draw_flow(flow, image, boxes=None):
-    flow_img = flow_to_image(flow, 35)
-    flow_img = cv2.cvtColor(flow_img, cv2.COLOR_RGB2BGR)
-
-    combined = cv2.addWeighted(image, 0.5, flow_img, 0.6, 0)
-    if boxes is not None:
-        white_background = np.ones((image.shape[0], image.shape[1], 3), dtype=np.uint8) * 255
-        new_image = cv2.addWeighted(image, 0.7, white_background, 0.4, 0)
-        for box in boxes:
-            x1, y1, x2, y2 = box.astype(int)
-            new_image[y1:y2, x1:x2] = combined[y1:y2, x1:x2]
-
-        combined = new_image
-
-    return combined

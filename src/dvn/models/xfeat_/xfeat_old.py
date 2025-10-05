@@ -20,9 +20,6 @@ top_k_frames = 4096
 maxItersParam = 1_000
 xfeat = torch.hub.load('verlab/accelerated_features', 'XFeat', pretrained = True, top_k = top_k_frames)
 
-
-
-
 def create_warped_image(image, target_image, homography):
     """Warp image to align with target_image using the given homography"""
     return cv2.warpPerspective(image, homography, (target_image.shape[1], target_image.shape[0]))

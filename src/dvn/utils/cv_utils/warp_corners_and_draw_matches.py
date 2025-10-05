@@ -16,7 +16,7 @@ def warp_corners_and_draw_matches(
     precomputed_H=None,
     precomputed_mask=None,
     HOMOGRAPHY_METHOD = cv2.RANSAC,
-) -> tuple[Optional[np.ndarray], Optional[float]]:
+) -> tuple[Optional[np.ndarray], Optional[float], Optional[np.ndarray]]:
     """
     Calculates homography, warps the corners of img1 onto img2, draws the warped
     corners, and optionally draws lines for inlier matches.
@@ -26,11 +26,11 @@ def warp_corners_and_draw_matches(
         dst_points: Corresponding keypoints from the destination image (img2), shape (N, 2).
         img1: The reference image (BGR format).
         img2: The destination image (BGR format).
-        draw_match_lines (bool, optional): If True (default), draws the lines
-                                           connecting inlier matches between img1 and img2
-                                           in a combined visualization. If False, only
-                                           draws the warped polygon outline of img1 onto img2
-                                           and returns just img2 with the polygon.
+        draw_match_lines (bool, optional): 
+            - If True (default), draws the lines
+            connecting inlier matches between img1 and img2 in a combined visualization.
+            - If False, only draws the warped polygon outline of img1 onto img2
+            and returns just img2 with the polygon.
 
     Returns:
         tuple:
@@ -41,7 +41,10 @@ def warp_corners_and_draw_matches(
                 - None if homography estimation or warping fails.
             - float | None: The ratio of inlier matches (inliers / total matches).
                             None if homography estimation fails.
+            - np.ndarray | None: warped_corners: The warped corner points of img1 in img2's space.
+                            None if homography estimation or warping fails.
     """
+    #TODO update the return docstring and also update the return type on the method
     # Ensure points are float32 for findHomography
     ref_points = np.float32(ref_points).reshape(-1, 1, 2)
     dst_points = np.float32(dst_points).reshape(-1, 1, 2)

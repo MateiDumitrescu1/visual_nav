@@ -5,6 +5,7 @@ from typing import no_type_check, Optional
 import os, torch, cv2
 import numpy as np
 from functools import cache
+from dvn.utils.cv_utils.warp_corners_and_draw_matches import warp_corners_and_draw_matches
 
 @cache
 def get_xfeat_model(top_k: int = 4096):
@@ -46,10 +47,10 @@ class XFeatModel:
     #TODO this needs better types and return types
     def match_xfeat(self,
         image1: np.ndarray,
-        feat1: dict,
+        feat1: dict | None,
         # 
         image2: np.ndarray,
-        feat2: dict,
+        feat2: dict | None,
         # 
         top_k: int = 4096,
         draw_match_lines: bool = True # New parameter
@@ -65,6 +66,7 @@ class XFeatModel:
             ---
             top_k: Number of top features to consider (default 4096).
             draw_match_lines: If True, draws lines between matched keypoints in the output.
+        ### Returns:
         """
         # prepare images
 
@@ -94,10 +96,10 @@ class XFeatModel:
             return None,None,None,None,None,None
 
         # pyrefly: ignore  # bad-unpacking
-        canvas,inlier_ratio,warped_corners = warp_corners_and_draw_matches(mkpts_0, mkpts_1, im1, im2,draw_match_lines)
+        output_canvas,inlier_ratio,warped_corners = warp_corners_and_draw_matches(mkpts_0, mkpts_1, im1, im2,draw_match_lines)
 
         # pyrefly: ignore  # bad-return
-        return canvas,mkpts_0,mkpts_1,inlier_ratio,nr_matches,warped_corners
+        return output_canvas, mkpts_0, mkpts_1, inlier_ratio, nr_matches, warped_corners
 
 
 def save_mkpts_to_file(mkpts, output_folder, filename):
@@ -126,13 +128,50 @@ def save_mkpts_to_file(mkpts, output_folder, filename):
         
         
 #! ------------------- TESTING -------------------
-from paths_ import images_dir
+from paths_ import PathLogic, TEST_SET
 #TODO implement soem tests for the methods of the XFeatModel class in this file
 #TODO from "test_image_pairs", use the "xfeat_example" folder and get the 2 images from there. run tests for all the methods of the XFeatModel class.
 
+def test_():
+    xfeat_model = XFeatModel(top_k=4096)
+    test_img_sets = PathLogic.get_test_image_sets(TEST_SET.FEATURE_MATCHING_TEST)
+    test_imgs = test_img_sets.get("xfeat_example", None)
 
-def test_xfeat_detect_and_compute():
-    pass
+    if test_imgs is None:
+        raise ValueError("No test images found in the 'xfeat_example' test set.")
 
+    img1: np.ndarray = cv2.imread(test_imgs[0]) # type: ignore[assignment]
+    img2: np.ndarray = cv2.imread(test_imgs[1]) # type: ignore[assignment]
+
+    if img1 is None or img2 is None:
+        raise ValueError("Failed to load one or both test images.")
+    
+    def test_match_xfeat():
+        from dvn.utils.image_utils.plot_images import plot_1_image
+
+        res = xfeat_model.match_xfeat(img1, None, img2, None, top_k=4096, draw_match_lines=True)
+        output_canvas, mkpts_0, mkpts_1, inlier_ratio, nr_matches, warped_corners = res
+
+        if output_canvas is None:
+            print("Not enough matches found (< 4)")
+            return
+
+        print(f"Matches: {nr_matches}, Inlier ratio: {inlier_ratio:.2%}")
+
+        # Convert BGR to RGB and plot
+        output_rgb = cv2.cvtColor(output_canvas, cv2.COLOR_BGR2RGB)
+        plot_1_image(
+            image=output_rgb,
+            title=f'XFeat Matches: {nr_matches} matches, Inlier ratio: {inlier_ratio:.2%}',
+            tight_layout=True
+        )
+    
+    def test_xfeat_detect_and_compute():
+        raise NotImplementedError()
+    
+    #! run the test methods
+    test_match_xfeat()
+    
 if __name__ == '__main__':
+    test_()
     print("All tests passed!")
