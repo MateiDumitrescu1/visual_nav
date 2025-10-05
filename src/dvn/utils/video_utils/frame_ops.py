@@ -3,8 +3,7 @@ from pathlib import Path
 import subprocess
 import numpy as np
 
-#* convert a video into a folder of frames
-def convert_video_to_frames(
+def get_frames_of_video(
     video_path: str | os.PathLike,
     output_dir: str | os.PathLike,
     pattern: str = "frame_%06d.jpg",
@@ -150,3 +149,13 @@ def stitch_frames_into_video(
         writer.write(canvas)
 
     writer.release()
+
+
+
+#! ------------------ TESTING ------------------
+
+
+def test_get_frames_of_video():
+    # video_path = "../../../../data/"
+    # output_dir = "../data/test_videos/frames"
+    # get_frames_of_video(video_path, output_dir, fps=5, overwrite=True, verbose=True)

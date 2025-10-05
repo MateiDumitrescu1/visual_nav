@@ -37,7 +37,7 @@ class XFeatModel:
         Detect and compute features using XFeat.
         """
         # Prepare the image for XFeat
-        im = prepare_np_array_image_for_xfeat(image)
+        im = self.prepare_np_array_image_for_xfeat(image)
         # pyrefly: ignore  # missing-attribute
         output = self.xfeat.detectAndCompute(im, top_k=top_k)[0]
         output.update({'image_size': (im.shape[1], im.shape[0])})    
@@ -79,7 +79,7 @@ class XFeatModel:
         output1 = feat2
         if feat2 is None:
             # pyrefly: ignore  # missing-attribute
-            output1 = xfeat.detectAndCompute(im2, top_k=top_k)[0]
+            output1 = self.xfeat.detectAndCompute(im2, top_k=top_k)[0]
 
         output0.update({'image_size': (im1.shape[1], im1.shape[0])})
         output1.update({'image_size': (im2.shape[1], im2.shape[0])})
@@ -126,5 +126,13 @@ def save_mkpts_to_file(mkpts, output_folder, filename):
         
         
 #! ------------------- TESTING -------------------
-from paths import test_image_pairs_dir
+from paths_ import images_dir
+#TODO implement soem tests for the methods of the XFeatModel class in this file
 #TODO from "test_image_pairs", use the "xfeat_example" folder and get the 2 images from there. run tests for all the methods of the XFeatModel class.
+
+
+def test_xfeat_detect_and_compute():
+    pass
+
+if __name__ == '__main__':
+    print("All tests passed!")

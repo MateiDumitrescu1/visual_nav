@@ -13,6 +13,7 @@ dependencies = [
     "tqdm",
     "imageio",
     "pyrefly",
+    "onnxruntime",
 ]
 
 [tool.mypy]
@@ -32,7 +33,7 @@ fallback_version = "0.2.0"
 
 [tool.setuptools.packages.find]
 where = ["src"]         # search only there
-include = ["overseer*", "sat*"] # pick up both packages
+include = ["dvn*", "sat*"] # pick up both packages
 
 [tool.pyrefly]
 python-version = "3.11.0"
