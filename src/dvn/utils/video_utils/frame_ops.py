@@ -4,8 +4,7 @@ import subprocess
 import numpy as np
 
 #* convert a video into a folder of frames
-# each frame is saved as frame_number
-def video_to_frames(
+def convert_video_to_frames(
     video_path: str | os.PathLike,
     output_dir: str | os.PathLike,
     pattern: str = "frame_%06d.jpg",
@@ -18,20 +17,13 @@ def video_to_frames(
 
     Parameters
     ----------
-    video_path : str | os.PathLike
-        Path to the input .mp4 file.
-    output_dir : str | os.PathLike
-        Folder where frames are written.
-    pattern : str, default "frame_%06d.jpg"
-        FFmpeg‐style filename pattern. Include a numeric directive (e.g. %06d)
-        so every frame gets a unique name. Change the extension to .png for
-        lossless output.
-    fps : int | None, optional
-        Resample to this many frames per second; None keeps the source FPS.
-    overwrite : bool, default False
-        If the output folder exists, delete it first.
-    verbose : bool, default True
-        Print the exact FFmpeg command being run.
+    - `video_path`: Path to the input .mp4 file.
+    - `output_dir`: Folder where frames are written.
+    - `pattern`: FFmpeg‐style filename pattern. Include a numeric directive (e.g. %06d)
+        so every frame gets a unique name. Change the extension to .png for lossless output.
+    - `fps`: Resample to this many frames per second; None keeps the source FPS.
+    - `overwrite`: If the output folder exists, delete it first.
+    - `verbose`:  Print the exact FFmpeg command being run.
 
     Raises
     ------
@@ -89,11 +81,10 @@ def video_to_frames(
     subprocess.run(cmd, check=True)
     
     
-
-def make_frames_into_video(
+def stitch_frames_into_video(
     folder_path: str,
     output_folder: str,
-    video_file_name: str,
+    output_file_name: str,
     fps: int = 30,
     codec: str = "mp4v"
 ) -> None:
@@ -134,7 +125,7 @@ def make_frames_into_video(
     # Prepare output
     out_dir = Path(output_folder).expanduser().resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / video_file_name
+    out_path = out_dir / output_file_name
 
     # pyrefly: ignore  # missing-attribute
     fourcc = cv2.VideoWriter_fourcc(*codec)

@@ -1,3 +1,11 @@
+from typing import Optional, no_type_check
+import numpy as np
+import cv2
+
+# Constants for homography estimation (you may want to adjust these)
+ransacReprojThresholdParam = 3.0
+maxItersParam = 2000
+
 @no_type_check
 def warp_corners_and_draw_matches(
     ref_points: np.ndarray,
@@ -7,6 +15,7 @@ def warp_corners_and_draw_matches(
     draw_match_lines: bool = True, 
     precomputed_H=None,
     precomputed_mask=None,
+    HOMOGRAPHY_METHOD = cv2.RANSAC,
 ) -> tuple[Optional[np.ndarray], Optional[float]]:
     """
     Calculates homography, warps the corners of img1 onto img2, draws the warped

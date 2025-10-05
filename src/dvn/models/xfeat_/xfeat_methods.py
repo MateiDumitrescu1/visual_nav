@@ -15,6 +15,9 @@ def load_xfeat_model(top_k_frames: int = 4096):
     )
     return xfeat
 
+def prepare_np_array_image_for_xfeat(img_src: np.ndarray) -> np.ndarray:
+    return np.copy(img_src[..., ::-1])
+
 @no_type_check
 def xfeat_detect_and_compute(image: np.ndarray, top_k: int = 4096) -> dict:
     """
@@ -81,10 +84,6 @@ def match_xfeat(
 
     # pyrefly: ignore  # bad-return
     return canvas,mkpts_0,mkpts_1,inlier_ratio,nr_matches,warped_corners
-
-def prepare_np_array_image_for_xfeat(img_src: np.ndarray) -> np.ndarray:
-    return np.copy(img_src[..., ::-1])
-
 
 def save_mkpts_to_file(mkpts, output_folder, filename):
     """
