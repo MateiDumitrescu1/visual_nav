@@ -17,9 +17,6 @@ class NeuFlowV2:
         self.get_input_details()
         self.get_output_details()
 
-    def __call__(self, img_prev: np.ndarray, img_now: np.ndarray) -> np.ndarray:
-        return self.estimate_flow(img_prev, img_now)
-
     def estimate_flow(self, img_prev: np.ndarray, img_now: np.ndarray) -> np.ndarray:
         input_tensors = self.prepare_inputs(img_prev, img_now)
 
@@ -72,24 +69,27 @@ class NeuFlowV2:
         self.output_names = [model_outputs[i].name for i in range(len(model_outputs))]
 
 
+#! ---------------- TESTING ----------------
+from paths_ import PathLogic, TEST_SET
 if __name__ == '__main__':
-    from imread_from_url import imread_from_url
-    from utils import draw_flow
 
     # Initialize model
     model_path = "../models/neuflow_sintel.onnx"
-    estimator = NeuFlowV2(model_path)
+    neuflow = NeuFlowV2(model_path)
 
     # Load images
-    img1 = imread_from_url("https://github.com/princeton-vl/RAFT/blob/master/demo-frames/frame_0016.png?raw=true")
-    img2 = imread_from_url("https://github.com/princeton-vl/RAFT/blob/master/demo-frames/frame_0025.png?raw=true")
+    test_img_sets = PathLogic.get_test_image_sets(TEST_SET.OPTICAL_FLOW_TEST)
+    test_imgs = test_img_sets.get("0", None)
+    
+    if test_imgs is None or len(test_imgs) < 2:
+        raise ValueError("Not enough test images found in the '0' test set.")
 
-    # Estimate optical flow
-    flow = estimator(img1, img2)
+    #TODO read the images properly
+    img1 = cv2.imread(test_imgs[0])
+    img2 = cv2.imread(test_imgs[1])
 
-    # Draw Flow
-    flow_img = draw_flow(flow, img1)
+    #* Estimate optical flow
+    flow = neuflow.estimate_flow(img1, img2)
 
-    cv2.namedWindow("Optical Flow", cv2.WINDOW_NORMAL)
-    cv2.imshow("Optical Flow", flow_img)
-    cv2.waitKey(0)
+    #* plot flow
+    #TODO plot the flow image
