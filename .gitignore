@@ -19,6 +19,8 @@
 *.svg
 *.ico
 
+LOCAL_README.md
+
 UAV_VisLoc_dataset
 
 # Byte-compiled / optimized / DLL files
