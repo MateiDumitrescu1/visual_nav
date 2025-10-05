@@ -22,6 +22,8 @@ video_dir = os.path.abspath(os.path.join(data_dir, 'videos'))
 check_dir_exists(video_dir)
 images_dir = os.path.abspath(os.path.join(data_dir, 'images'))
 check_dir_exists(images_dir)
+models_dir = os.path.abspath(os.path.join(data_dir, 'models'))
+check_dir_exists(models_dir)
 
 #! test image sets dir
 test_image_sets_dir = os.path.abspath(os.path.join(images_dir, 'test_image_sets'))

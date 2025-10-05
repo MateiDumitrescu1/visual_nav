@@ -19,6 +19,10 @@
 *.svg
 *.ico
 
+*.onnx
+*.pth
+*.pt
+
 LOCAL_README.md
 
 UAV_VisLoc_dataset

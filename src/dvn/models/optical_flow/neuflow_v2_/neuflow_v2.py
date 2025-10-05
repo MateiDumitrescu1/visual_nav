@@ -2,13 +2,12 @@ import time
 import cv2
 import numpy as np
 import onnxruntime
-
-# from .utils import check_model
-
+from dvn.models.optical_flow.neuflow_v2_.neuflow_utils import draw_flow, check_model
+from paths_ import PathLogic, TEST_SET, models_dir
 class NeuFlowV2:
 
     def __init__(self, path: str):
-        # check_model(path)
+        check_model(path)
 
         # Initialize model
         self.session = onnxruntime.InferenceSession(path, providers=onnxruntime.get_available_providers())
@@ -70,26 +69,38 @@ class NeuFlowV2:
 
 
 #! ---------------- TESTING ----------------
-from paths_ import PathLogic, TEST_SET
-if __name__ == '__main__':
-
+def test_estimate_flow():
+    """Test NeuFlowV2 optical flow estimation on test images."""
     # Initialize model
-    model_path = "../models/neuflow_sintel.onnx"
+    model_path = f"{models_dir}/neuflow_sintel.onnx"
     neuflow = NeuFlowV2(model_path)
 
     # Load images
     test_img_sets = PathLogic.get_test_image_sets(TEST_SET.OPTICAL_FLOW_TEST)
     test_imgs = test_img_sets.get("0", None)
-    
+
     if test_imgs is None or len(test_imgs) < 2:
         raise ValueError("Not enough test images found in the '0' test set.")
 
-    #TODO read the images properly
+    # Read the images
     img1 = cv2.imread(test_imgs[0])
     img2 = cv2.imread(test_imgs[1])
 
-    #* Estimate optical flow
+    if img1 is None or img2 is None:
+        raise ValueError("Failed to load test images.")
+
+    # Estimate optical flow
     flow = neuflow.estimate_flow(img1, img2)
 
-    #* plot flow
-    #TODO plot the flow image
+    # Plot flow visualization
+    flow_viz = draw_flow(flow, img1)
+
+    # Display results
+    cv2.imshow("Optical Flow", flow_viz)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    return flow
+
+if __name__ == '__main__':
+    test_estimate_flow()
