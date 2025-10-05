@@ -154,6 +154,7 @@ def warp_corners_and_draw_matches(
         # Return only the second image with the warped corners drawn
         # pyrefly: ignore  # bad-return
         return img2_with_corners, inlier_ratio, warped_corners
+
 def prepare_np_array_image_for_xfeat(img_src: np.ndarray) -> np.ndarray:
     return np.copy(img_src[..., ::-1])
 
@@ -167,11 +168,9 @@ def find_homography(points1, points2):
     # Print sample matching points for verification
     print(f"Matching points shape: {points1.shape}, {points2.shape}")
     print("Sample matching points:")
-    # pyrefly: ignore  # bad-argument-type
     for i in range(min(5, len(points1))):
-        # pyrefly: ignore  # index-error
-        print(f"Match {i}: {points1[i]} -> {points2[i]}")
-    
+        print(f"  {i}: {points1[i]} -> {points2[i]}")
+
     # Find homography
     # pyrefly: ignore  # no-matching-overload
     H, mask = cv2.findHomography(
@@ -210,35 +209,27 @@ def xfeat_detect_and_compute(image: np.ndarray, top_k: int = 4096) -> dict:
     output.update({'image_size': (im.shape[1], im.shape[0])})    
     return output
 
-# @no_type_check
-def match_xfeat_star(img1: np.ndarray, img2: np.ndarray, top_k: int = 4096) -> tuple:
-    """
-    Match features between two images using XFeat.
-    """
-    # Prepare the images for XFeat
-    im1 = prepare_np_array_image_for_xfeat(img1)
-    im2 = prepare_np_array_image_for_xfeat(img2)
-
-    # Detect and compute features for both images
-    
-    # pyrefly: ignore  # missing-attribute
-    mkpts_0, mkpts_1 = xfeat.match_xfeat_star(img1, img2, top_k = top_k) # pyright: ignore
-    # pyrefly: ignore  # bad-unpacking
-    canvas,_,_ = warp_corners_and_draw_matches(mkpts_0, mkpts_1, im1, im2, draw_match_lines=True)
-
-    # pyrefly: ignore  # bad-return
-    return canvas
-
 def match_xfeat(
     image1: np.ndarray,
     feat1: dict,
+    # 
     image2: np.ndarray,
     feat2: dict,
+    # 
     top_k: int = 4096,
     draw_match_lines: bool = True # New parameter
 ) -> np.ndarray:
     """
     Accepts either file paths or pre-loaded BGR arrays.
+    ### Params:
+        image1: First image as a numpy array (BGR format).
+        feat1: Precomputed features for the first image (or None to compute).
+        ---
+        image2: Second image as a numpy array (BGR format).
+        feat2: Precomputed features for the second image (or None to compute).
+        ---
+        top_k: Number of top features to consider (default 4096).
+        draw_match_lines: If True, draws lines between matched keypoints in the output.
     """
     # prepare images
 
