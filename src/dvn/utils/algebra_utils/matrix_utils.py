@@ -1,3 +1,5 @@
+import numpy as np
+
 def estimate_intrinsic_matrix(image_width, image_height, fov_degrees=60):
     """Estimates a basic intrinsic matrix K."""
     #TODO understand what this does

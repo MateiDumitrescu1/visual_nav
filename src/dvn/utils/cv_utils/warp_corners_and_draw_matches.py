@@ -6,7 +6,7 @@ import cv2
 ransacReprojThresholdParam = 3.0
 maxItersParam = 2000
 
-@no_type_check
+# @no_type_check
 def warp_corners_and_draw_matches(
     ref_points: np.ndarray,
     dst_points: np.ndarray,
@@ -15,7 +15,7 @@ def warp_corners_and_draw_matches(
     draw_match_lines: bool = True, 
     precomputed_H=None,
     precomputed_mask=None,
-    HOMOGRAPHY_METHOD = cv2.RANSAC,
+    HOMOGRAPHY_METHOD = cv2.USAC_MAGSAC, # cv2.RANSAC, # cv2.USAC_MAGSAC
 ) -> tuple[Optional[np.ndarray], Optional[float], Optional[np.ndarray]]:
     """
     Calculates homography, warps the corners of img1 onto img2, draws the warped
@@ -67,7 +67,6 @@ def warp_corners_and_draw_matches(
         
     if H is None or mask is None:
         print("⚠️  Homography estimation failed: skipping this pair.")
-        # pyrefly: ignore  # bad-return
         return None, None, None
 
     mask = mask.flatten()
@@ -77,7 +76,7 @@ def warp_corners_and_draw_matches(
         print("⚠️ No matches provided to findHomography.")
         inlier_ratio = 0.0
     else:
-        inlier_ratio = num_inliers / num_matches
+        inlier_ratio = float(num_inliers / num_matches)
     print(f'Inlier ratio: {inlier_ratio:.4f} ({int(num_inliers)}/{num_matches})')
 
     # Get corners of the first image (img1)
@@ -94,11 +93,9 @@ def warp_corners_and_draw_matches(
         warped_corners = cv2.perspectiveTransform(corners_img1, H)
         if warped_corners is None or not np.all(np.isfinite(warped_corners)):
              print("⚠️ perspectiveTransform resulted in invalid corners.")
-             # pyrefly: ignore  # bad-return
              return None, inlier_ratio, None # Homography was found, return ratio but no image
     except cv2.error as e:
         print(f"⚠️ cv2.error during perspectiveTransform: {e}")
-        # pyrefly: ignore  # bad-return
         return None, inlier_ratio, None # Homography was found, return ratio but no image
 
 
@@ -108,8 +105,7 @@ def warp_corners_and_draw_matches(
     if warped_corners is not None:
         # Convert to integer points for drawing polylines
         pts = np.int32(warped_corners.reshape(-1, 2))
-        # pyrefly: ignore  # no-matching-overload
-        cv2.polylines(img2_with_corners, [pts], isClosed=True, color=(0, 255, 0), thickness=4, lineType=cv2.LINE_AA)
+        cv2.polylines(img=img2_with_corners, pts=[pts], isClosed=True, color=(0, 255, 0), thickness=4, lineType=cv2.LINE_AA)  # pyright: ignore[reportCallIssue]
         # Optional: Draw individual corners if needed
         # for i in range(len(warped_corners)):
         #     pt = tuple(warped_corners[i][0].astype(int))
@@ -129,18 +125,15 @@ def warp_corners_and_draw_matches(
 
         # Draw inlier matches onto the combined image
         # Use img2_with_corners which already has the polygon
-        # pyrefly: ignore  # no-matching-overload
-        img_matches_combined = cv2.drawMatches(
-            img1, keypoints1,
-            img2_with_corners, keypoints2,
-            matches, None, # Draw only inlier matches
+        img_matches_combined = cv2.drawMatches(                         # pyright: ignore[reportCallIssue]
+            img1=img1, keypoints1=keypoints1,
+            img2=img2_with_corners, keypoints2=keypoints2,
+            matches1to2=matches,
             matchColor=(0, 255, 0), # Green lines for matches
             singlePointColor=(255, 0, 0), # Blue single points (if any)
             flags=cv2.DRAW_MATCHES_FLAGS_NOT_DRAW_SINGLE_POINTS # Don't draw unmatched keypoints
         )
-        # pyrefly: ignore  # bad-return
         return img_matches_combined, inlier_ratio, warped_corners
     else:
         # Return only the second image with the warped corners drawn
-        # pyrefly: ignore  # bad-return
         return img2_with_corners, inlier_ratio, warped_corners

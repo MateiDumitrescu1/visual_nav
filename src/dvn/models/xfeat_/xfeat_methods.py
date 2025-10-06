@@ -94,6 +94,9 @@ class XFeatModel:
         output0.update({'image_size': (im1.shape[1], im1.shape[0])})
         output1.update({'image_size': (im2.shape[1], im2.shape[0])})
 
+        mkpts_0: np.ndarray  # shape (N, 2)
+        mkpts_1: np.ndarray  # shape (N, 2)
+        
         mkpts_0, mkpts_1, _ = self.xfeat.match_lighterglue(output0, output1) # pyright: ignore[reportAttributeAccessIssue]
         nr_matches = len(mkpts_0)
         print(f"Number of matches: {nr_matches}")
@@ -133,6 +136,7 @@ def save_mkpts_to_file(mkpts, output_folder, filename):
         
 #! ------------------- TESTING -------------------
 from paths_ import PathLogic, TEST_SET
+from dvn.utils.image_utils.plot_images import plot_1_image
 #TODO implement soem tests for the methods of the XFeatModel class in this file
 #TODO from "test_image_pairs", use the "xfeat_example" folder and get the 2 images from there. run tests for all the methods of the XFeatModel class.
 
@@ -151,7 +155,7 @@ def test_():
         raise ValueError("Failed to load one or both test images.")
     
     def test_match_xfeat():
-        from dvn.utils.image_utils.plot_images import plot_1_image
+        
 
         res = xfeat_model.match_xfeat(img1, None, img2, None, top_k=4096, draw_match_lines=True)
         output_canvas, mkpts_0, mkpts_1, inlier_ratio, nr_matches, warped_corners = res
@@ -171,10 +175,34 @@ def test_():
         )
     
     def test_xfeat_detect_and_compute():
-        raise NotImplementedError()
+        # Detect and compute features for both images
+        feat1 = xfeat_model.xfeat_detect_and_compute(img1, top_k=4096)
+        feat2 = xfeat_model.xfeat_detect_and_compute(img2, top_k=4096)
+
+        print(f"Image 1 features detected: {feat1['keypoints'].shape[0]}")
+        print(f"Image 2 features detected: {feat2['keypoints'].shape[0]}")
+
+        # Match using precomputed features
+        res = xfeat_model.match_xfeat(img1, feat1, img2, feat2, top_k=4096, draw_match_lines=True)
+        output_canvas, mkpts_0, mkpts_1, inlier_ratio, nr_matches, warped_corners = res
+
+        if output_canvas is None:
+            print("Not enough matches found (< 4)")
+            return
+
+        print(f"Matches: {nr_matches}, Inlier ratio: {inlier_ratio:.2%}")
+
+        # Convert BGR to RGB and plot
+        output_rgb = cv2.cvtColor(output_canvas, cv2.COLOR_BGR2RGB)
+        plot_1_image(
+            image=output_rgb,
+            title=f'XFeat Detect & Compute Test: {nr_matches} matches, Inlier ratio: {inlier_ratio:.2%}',
+            tight_layout=True
+        )
     
     #! run the test methods
-    test_match_xfeat()
+    # test_match_xfeat()
+    test_xfeat_detect_and_compute()
     
 if __name__ == '__main__':
     test_()
