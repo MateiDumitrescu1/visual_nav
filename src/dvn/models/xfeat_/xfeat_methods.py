@@ -6,6 +6,7 @@ import os, torch, cv2
 import numpy as np
 from functools import cache
 from dvn.utils.cv_utils.warp_corners_and_draw_matches import warp_corners_and_draw_matches
+from dvn.models.config import FeatureMatchingOutput
 
 @cache
 def get_xfeat_model(top_k: int = 4096):
@@ -34,6 +35,9 @@ class XFeatModel:
     def xfeat_detect_and_compute(self, image: np.ndarray, top_k: int = 4096) -> dict:
         """
         Detect and compute features using XFeat.
+        Output contains: 'keypoints', 'descriptors', 'scores'.
+        ~Look at https://colab.research.google.com/github/verlab/accelerated_features/blob/main/notebooks/minimal_example.ipynb 
+        for more details about the output dictionary.
         """
         # Prepare the image for XFeat
         im = self.prepare_np_array_image_for_xfeat(image)
@@ -41,17 +45,16 @@ class XFeatModel:
         output.update({'image_size': (im.shape[1], im.shape[0])})    
         return output
 
-    #TODO this needs better types and return types
     def match_xfeat(self,
         image1: np.ndarray,
         feat1: dict | None,
-        # 
+        #
         image2: np.ndarray,
         feat2: dict | None,
-        # 
+        #
         top_k: int = 4096,
         draw_match_lines: bool = True # New parameter
-    ) -> tuple[Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], Optional[float], Optional[int], Optional[np.ndarray]]:
+    ) -> FeatureMatchingOutput | None:
         """
         Accepts either file paths or pre-loaded BGR arrays.
         ### Params:
@@ -64,17 +67,7 @@ class XFeatModel:
             - top_k: Number of top features to consider (default 4096).
             - draw_match_lines: If True, draws lines between matched keypoints in the output.
         ### Returns:
-        a tuple with:
-        - **The output image** `(np.ndarray | None)`: 
-            - If draw_match_lines is True: A combined image showing img1 and img2
-                side-by-side with match lines and the warped polygon.
-            - If draw_match_lines is False: img2 with the warped polygon drawn on it.
-            - None if less than 4 matches are found.
-        - Matched keypoints from the first image `(np.ndarray | None) (shape (N, 2)`. None if less than 4 matches are found.
-        - Matched keypoints from the second image `(np.ndarray | None) (shape (N, 2)`. None if less than 4 matches are found.
-        - float | None: The ratio of inlier matches (inliers / total matches). None if less than 4 matches are found.
-        - int | None: The number of matches found. None if less than 4 matches are found.
-        - np.ndarray | None: warped_corners: The warped corner points of img1 in img2's space. None if less than 4 matches are found.
+        FeatureMatchingOutput object.
         """
         # prepare images
 
@@ -102,12 +95,11 @@ class XFeatModel:
         print(f"Number of matches: {nr_matches}")
 
         if nr_matches < 4:
-            return None,  None, None, None, None, None
+            return None
+        
+        result = warp_corners_and_draw_matches(mkpts_0, mkpts_1, im1, im2, draw_match_lines)
 
-        output_canvas,inlier_ratio,warped_corners = warp_corners_and_draw_matches(mkpts_0, mkpts_1, im1, im2,draw_match_lines)
-
-        return output_canvas, mkpts_0, mkpts_1, inlier_ratio, nr_matches, warped_corners
-
+        return result
 
 def save_mkpts_to_file(mkpts, output_folder, filename):
     """
@@ -137,8 +129,6 @@ def save_mkpts_to_file(mkpts, output_folder, filename):
 #! ------------------- TESTING -------------------
 from paths_ import PathLogic, TEST_SET
 from dvn.utils.image_utils.plot_images import plot_1_image
-#TODO implement soem tests for the methods of the XFeatModel class in this file
-#TODO from "test_image_pairs", use the "xfeat_example" folder and get the 2 images from there. run tests for all the methods of the XFeatModel class.
 
 def test_():
     xfeat_model = XFeatModel(top_k=4096)
@@ -155,22 +145,21 @@ def test_():
         raise ValueError("Failed to load one or both test images.")
     
     def test_match_xfeat():
+        result = xfeat_model.match_xfeat(img1, None, img2, None, top_k=4096, draw_match_lines=True)
+        if result is None:
+            raise ValueError("Feature matching returned None (not enough matches).")
         
-
-        res = xfeat_model.match_xfeat(img1, None, img2, None, top_k=4096, draw_match_lines=True)
-        output_canvas, mkpts_0, mkpts_1, inlier_ratio, nr_matches, warped_corners = res
-
-        if output_canvas is None:
+        if result.output_canvas is None:
             print("Not enough matches found (< 4)")
             return
 
-        print(f"Matches: {nr_matches}, Inlier ratio: {inlier_ratio:.2%}")
+        print(f"Matches: {result.nr_matches}, Inlier ratio: {result.inlier_ratio:.2%}")
 
         # Convert BGR to RGB and plot
-        output_rgb = cv2.cvtColor(output_canvas, cv2.COLOR_BGR2RGB)
+        output_rgb = cv2.cvtColor(result.output_canvas, cv2.COLOR_BGR2RGB)
         plot_1_image(
             image=output_rgb,
-            title=f'XFeat Matches: {nr_matches} matches, Inlier ratio: {inlier_ratio:.2%}',
+            title=f'XFeat Matches: {result.nr_matches} matches, Inlier ratio: {result.inlier_ratio:.2%}',
             tight_layout=True
         )
     
@@ -183,20 +172,22 @@ def test_():
         print(f"Image 2 features detected: {feat2['keypoints'].shape[0]}")
 
         # Match using precomputed features
-        res = xfeat_model.match_xfeat(img1, feat1, img2, feat2, top_k=4096, draw_match_lines=True)
-        output_canvas, mkpts_0, mkpts_1, inlier_ratio, nr_matches, warped_corners = res
-
-        if output_canvas is None:
+        result = xfeat_model.match_xfeat(img1, feat1, img2, feat2, top_k=4096, draw_match_lines=True)
+        
+        if result is None:
+            raise ValueError("Feature matching returned None (not enough matches).")
+        
+        if result.output_canvas is None:
             print("Not enough matches found (< 4)")
             return
 
-        print(f"Matches: {nr_matches}, Inlier ratio: {inlier_ratio:.2%}")
+        print(f"Matches: {result.nr_matches}, Inlier ratio: {result.inlier_ratio:.2%}")
 
         # Convert BGR to RGB and plot
-        output_rgb = cv2.cvtColor(output_canvas, cv2.COLOR_BGR2RGB)
+        output_rgb = cv2.cvtColor(result.output_canvas, cv2.COLOR_BGR2RGB)
         plot_1_image(
             image=output_rgb,
-            title=f'XFeat Detect & Compute Test: {nr_matches} matches, Inlier ratio: {inlier_ratio:.2%}',
+            title=f'XFeat Detect & Compute Test: {result.nr_matches} matches, Inlier ratio: {result.inlier_ratio:.2%}',
             tight_layout=True
         )
     
