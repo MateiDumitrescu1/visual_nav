@@ -136,25 +136,32 @@ def reject_match(cluster_counts: Dict[int, int], noise_count: int, nr_matches: i
 
     return False, "Accepted"
 
+class ClusterFilterParams:
+    def __init__(self,
+        min_cluster_size: int = 5,
+        min_samples: int = 3,
+        min_points_to_attempt_clustering: int = 5
+    ):
+        self.min_cluster_size = min_cluster_size
+        self.min_samples = min_samples
+        self.min_points_to_attempt_clustering = min_points_to_attempt_clustering
+
 def feature_match_images(
     img1: np.ndarray,
     img2: np.ndarray,
     top_k: int = 4096,
-    min_cluster_size: int = 5,
-    min_samples: int = 3,
-    min_points_to_attempt_clustering: int = 5,
+    cluster_filter_params: Optional[ClusterFilterParams] = None,
+    homo_filter: bool = False
 ) -> FeatureMatchingOutput | None:
     """
-    Use XFeat to feature match two images, then run a clustering algorithm over
-    the translation vectors to filter out bad matches.
+    Use XFeat to feature match two images, optionally filtering with clustering or homography.
 
     ### Params:
     - `img1`: First image as a numpy array
     - `img2`: Second image as a numpy array
     - `top_k`: Number of top features to consider (default 4096)
-    - `min_cluster_size`: HDBSCAN minimum cluster size (default 5)
-    - `min_samples`: HDBSCAN min_samples parameter (default 3)
-    - `min_points_to_attempt_clustering`: Minimum matches required for clustering (default 5)
+    - `cluster_filter_params`: Optional clustering parameters. If provided, applies HDBSCAN clustering to filter matches
+    - `homo_filter`: If True, keeps only inlier matches based on homography estimation
 
     ### Returns:
     A FeatureMatchingOutput object with filtered matches and visualization, or None if matching fails.
@@ -179,35 +186,44 @@ def feature_match_images(
 
     print(f"Initial matches: {nr_matches}")
 
-    # Cluster translation vectors using HDBSCAN
-    cluster_labels, num_clusters = cluster_translation_vectors_hdbscan(
-        mkpts0,
-        mkpts1,
-        min_cluster_size=min_cluster_size,
-        min_samples=min_samples,
-        min_points_to_attempt_clustering=min_points_to_attempt_clustering
-    )
+    #* filtering matches using homography (if homo_filter is True)
+    if homo_filter:
+        H, inlier_mask, inlier_ratio = find_homography(mkpts0, mkpts1)
 
-    # Get cluster statistics
-    cluster_counts, noise_count = get_counts_from_cluster_labels(cluster_labels)
-    print(f"Cluster counts: {cluster_counts}")
-    print(f"Noise count: {noise_count}")
+        if H is None or inlier_mask is None:
+            print("❌ Failed to compute homography")
+            return None
 
-    # Decide whether to reject the match
-    should_reject, reject_reason = reject_match(cluster_counts, noise_count, nr_matches)
+        # Keep only inlier matches
+        mkpts0 = mkpts0[inlier_mask.ravel() == 1]
+        mkpts1 = mkpts1[inlier_mask.ravel() == 1]
+        nr_matches = len(mkpts0)
+        print(f"After homography filtering: {nr_matches} matches (inlier ratio: {inlier_ratio:.2f})")
+    
+    #* accept / reject the feature matching attempt via clustering (if cluster_filter_params is provided)
+    if cluster_filter_params is not None:
+        # Cluster translation vectors using HDBSCAN
+        cluster_labels, num_clusters = cluster_translation_vectors_hdbscan(
+            mkpts0,
+            mkpts1,
+            min_cluster_size=cluster_filter_params.min_cluster_size,
+            min_samples=cluster_filter_params.min_samples,
+            min_points_to_attempt_clustering=cluster_filter_params.min_points_to_attempt_clustering
+        )
 
-    if should_reject:
-        print(f"❌ Match rejected: {reject_reason}")
-        return None
+        # Get cluster statistics
+        cluster_counts, noise_count = get_counts_from_cluster_labels(cluster_labels)
+        print(f"Cluster counts: {cluster_counts}")
+        print(f"Noise count: {noise_count}")
 
-    print(f"✅ Match accepted: {reject_reason}")
+        # Decide whether to reject the match
+        should_reject, reject_reason = reject_match(cluster_counts, noise_count, nr_matches)
 
-    # Find homography
-    # H, inlier_mask, inlier_ratio = find_homography(mkpts0, mkpts1)
+        if should_reject:
+            print(f"❌ Match rejected: {reject_reason}")
+            return None
 
-    # if H is None:
-    #     print("❌ Failed to compute homography")
-    #     return None
+        print(f"✅ Match accepted: {reject_reason}")
 
     # Return complete FeatureMatchingOutput
     return FeatureMatchingOutput(
@@ -215,7 +231,6 @@ def feature_match_images(
         mkpts_1=mkpts1,
         feat0=match_result.feat0,
         feat1=match_result.feat1,
-        # inlier_ratio=inlier_ratio,
         nr_matches=nr_matches,
         warped_corners=None  # Could be extracted from warp_corners_and_draw_matches if needed
     )
@@ -245,38 +260,47 @@ def test_feature_match_images():
 
     print(f"Testing feature_match_images with images of shapes: {img1.shape}, {img2.shape}")
 
-    # Run the feature matching with clustering
-    result = feature_match_images(img1, img2, top_k=4096)
+    def test_homo_filtering():
+        # Run the feature matching with clustering
+        result = feature_match_images(img1=img1, img2=img2, top_k=4096, homo_filter=True)
 
-    if result is None:
-        print("❌ Feature matching failed or was rejected by clustering")
-        return
+        if result is None:
+            print("❌ Feature matching failed or was rejected by clustering")
+            return
 
-    print(f"✅ Feature matching successful!")
-    print(f"   - Matches: {result.nr_matches}")
+        print(f"✅ Feature matching successful!")
+        print(f"   - Matches: {result.nr_matches}")
 
-    #* Visualize the result using draw_matches
-    if result.mkpts_0 is not None and result.mkpts_1 is not None:
-        # Create visualization with match lines
-        matches_img = draw_matches(
-            img1=img1,
-            img2=img2,
-            ref_points=result.mkpts_0,
-            dst_points=result.mkpts_1,
-            inlier_mask=None,  #* Draw all matches (already filtered by clustering)
-            colors=None,  # Use default green color
-            thickness=1
-        )
+        #* Visualize the result using draw_matches
+        if result.mkpts_0 is not None and result.mkpts_1 is not None:
+            # Create visualization with match lines
+            matches_img = draw_matches(
+                img1=img1,
+                img2=img2,
+                ref_points=result.mkpts_0,
+                dst_points=result.mkpts_1,
+                inlier_mask=None,  #* Draw all matches (already filtered by clustering)
+                colors=None,  # Use default green color
+                thickness=1
+            )
 
-        # Convert BGR to RGB for display
-        matches_rgb = cv2.cvtColor(matches_img, cv2.COLOR_BGR2RGB)
-        plot_1_image(
-            image=matches_rgb,
-            title=f'Feature Match (Clustered): {result.nr_matches} matches',
-            tight_layout=True
-        )
-    else:
-        print("⚠️ No keypoints available for visualization")
+            # Convert BGR to RGB for display
+            matches_rgb = cv2.cvtColor(matches_img, cv2.COLOR_BGR2RGB)
+            plot_1_image(
+                image=matches_rgb,
+                title=f'Feature Match (Clustered): {result.nr_matches} matches',
+                tight_layout=True
+            )
+        else:
+            print("⚠️ No keypoints available for visualization")
+            
+    def test_cluster_filtering():
+        #TODO draw the matches and assign a different color to keypoints from the same clusters. assign colors to each cluster such that
+        # clusters that are more similar have more similar colors
+        pass
+    
+    test_homo_filtering()
+    test_cluster_filtering()
 
 if __name__ == '__main__':
     test_feature_match_images()
