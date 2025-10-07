@@ -4,6 +4,7 @@ from typing import Optional, no_type_check, Tuple
 
 ransacReprojThresholdParam = 5.0
 
+#~ `points` is the `mkpts` array
 def find_homography(
     points1: np.ndarray,  # shape (N, 2)
     points2: np.ndarray,   # shape (N, 2)

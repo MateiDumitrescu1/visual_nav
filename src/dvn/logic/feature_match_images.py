@@ -5,7 +5,7 @@ from hdbscan import HDBSCAN
 from dvn.models.xfeat_.xfeat_methods import XFeatModel
 from dvn.models.config import FeatureMatchingOutput
 from dvn.utils.algebra_utils.homo import find_homography
-from dvn.utils.cv_utils.warp_corners_and_draw_matches import warp_corners_and_draw_matches
+from dvn.utils.cv_utils.warp_corners_and_draw_matches import warp_corners_and_draw_matches, draw_matches
 
 def cluster_translation_vectors_hdbscan(
     mkpts0: np.ndarray,
@@ -203,34 +203,19 @@ def feature_match_images(
     print(f"✅ Match accepted: {reject_reason}")
 
     # Find homography
-    H, inlier_mask, inlier_ratio = find_homography(mkpts0, mkpts1)
+    # H, inlier_mask, inlier_ratio = find_homography(mkpts0, mkpts1)
 
-    if H is None:
-        print("❌ Failed to compute homography")
-        return None
-
-    # Create visualization
-    im1 = xfeat_model.prepare_np_array_image_for_xfeat(img1)
-    im2 = xfeat_model.prepare_np_array_image_for_xfeat(img2)
-
-    output_canvas = warp_corners_and_draw_matches(
-        mkpts0,
-        mkpts1,
-        im1,
-        im2,
-        draw_match_lines=True,
-        precomputed_H=H,
-        precomputed_inlier_mask=inlier_mask
-    )
+    # if H is None:
+    #     print("❌ Failed to compute homography")
+    #     return None
 
     # Return complete FeatureMatchingOutput
     return FeatureMatchingOutput(
-        output_canvas=output_canvas,
         mkpts_0=mkpts0,
         mkpts_1=mkpts1,
         feat0=match_result.feat0,
         feat1=match_result.feat1,
-        inlier_ratio=inlier_ratio,
+        # inlier_ratio=inlier_ratio,
         nr_matches=nr_matches,
         warped_corners=None  # Could be extracted from warp_corners_and_draw_matches if needed
     )
@@ -269,19 +254,29 @@ def test_feature_match_images():
 
     print(f"✅ Feature matching successful!")
     print(f"   - Matches: {result.nr_matches}")
-    print(f"   - Inlier ratio: {result.inlier_ratio:.4f}")
 
-    # Visualize the result
-    if result.output_canvas is not None:
+    #* Visualize the result using draw_matches
+    if result.mkpts_0 is not None and result.mkpts_1 is not None:
+        # Create visualization with match lines
+        matches_img = draw_matches(
+            img1=img1,
+            img2=img2,
+            ref_points=result.mkpts_0,
+            dst_points=result.mkpts_1,
+            inlier_mask=None,  #* Draw all matches (already filtered by clustering)
+            colors=None,  # Use default green color
+            thickness=1
+        )
+
         # Convert BGR to RGB for display
-        output_rgb = cv2.cvtColor(result.output_canvas, cv2.COLOR_BGR2RGB)
+        matches_rgb = cv2.cvtColor(matches_img, cv2.COLOR_BGR2RGB)
         plot_1_image(
-            image=output_rgb,
-            title=f'Feature Match (Clustered): {result.nr_matches} matches, {result.inlier_ratio:.2f} inlier ratio',
+            image=matches_rgb,
+            title=f'Feature Match (Clustered): {result.nr_matches} matches',
             tight_layout=True
         )
     else:
-        print("⚠️ No output canvas generated")
+        print("⚠️ No keypoints available for visualization")
 
 if __name__ == '__main__':
     test_feature_match_images()
