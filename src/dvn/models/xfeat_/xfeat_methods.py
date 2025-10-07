@@ -53,10 +53,9 @@ class XFeatModel:
         feat2: dict | None,
         #
         top_k: int = 4096,
-        draw_match_lines: bool = True # New parameter
     ) -> FeatureMatchingOutput | None:
         """
-        Accepts either file paths or pre-loaded BGR arrays.
+        Matches features between two images using XFeat.
         ### Params:
             - image1: First image as a numpy array (BGR format).
             - feat1: Precomputed features for the first image (or None to compute).
@@ -65,9 +64,8 @@ class XFeatModel:
             - feat2: Precomputed features for the second image (or None to compute).
             ---
             - top_k: Number of top features to consider (default 4096).
-            - draw_match_lines: If True, draws lines between matched keypoints in the output.
         ### Returns:
-        FeatureMatchingOutput object.
+        FeatureMatchingOutput object with matched keypoints and features, or None if less than 4 matches are found.
         """
         # prepare images
 
@@ -89,17 +87,22 @@ class XFeatModel:
 
         mkpts_0: np.ndarray  # shape (N, 2)
         mkpts_1: np.ndarray  # shape (N, 2)
-        
+
         mkpts_0, mkpts_1, _ = self.xfeat.match_lighterglue(output0, output1) # pyright: ignore[reportAttributeAccessIssue]
         nr_matches = len(mkpts_0)
         print(f"Number of matches: {nr_matches}")
 
         if nr_matches < 4:
             return None
-        
-        result = warp_corners_and_draw_matches(mkpts_0, mkpts_1, im1, im2, draw_match_lines)
 
-        return result
+        # Return FeatureMatchingOutput with all data
+        return FeatureMatchingOutput(
+            mkpts_0=mkpts_0,
+            mkpts_1=mkpts_1,
+            feat0=output0,
+            feat1=output1,
+            nr_matches=nr_matches,
+        )
 
 def save_mkpts_to_file(mkpts, output_folder, filename):
     """
@@ -145,21 +148,33 @@ def test_():
         raise ValueError("Failed to load one or both test images.")
     
     def test_match_xfeat():
-        result = xfeat_model.match_xfeat(img1, None, img2, None, top_k=4096, draw_match_lines=True)
+        result = xfeat_model.match_xfeat(img1, None, img2, None, top_k=4096)
         if result is None:
             raise ValueError("Feature matching returned None (not enough matches).")
-        
-        if result.output_canvas is None:
-            print("Not enough matches found (< 4)")
+
+        print(f"Matches: {result.nr_matches}")
+
+        # Visualize the matches using warp_corners_and_draw_matches
+        im1 = xfeat_model.prepare_np_array_image_for_xfeat(img1)
+        im2 = xfeat_model.prepare_np_array_image_for_xfeat(img2)
+
+        output_canvas = warp_corners_and_draw_matches(
+            result.mkpts_0,  # type: ignore
+            result.mkpts_1,  # type: ignore
+            im1,
+            im2,
+            draw_match_lines=True
+        )
+
+        if output_canvas is None:
+            print("Visualization failed")
             return
 
-        print(f"Matches: {result.nr_matches}, Inlier ratio: {result.inlier_ratio:.2%}")
-
         # Convert BGR to RGB and plot
-        output_rgb = cv2.cvtColor(result.output_canvas, cv2.COLOR_BGR2RGB)
+        output_rgb = cv2.cvtColor(output_canvas, cv2.COLOR_BGR2RGB)
         plot_1_image(
             image=output_rgb,
-            title=f'XFeat Matches: {result.nr_matches} matches, Inlier ratio: {result.inlier_ratio:.2%}',
+            title=f'XFeat Matches: {result.nr_matches} matches',
             tight_layout=True
         )
     
@@ -172,27 +187,39 @@ def test_():
         print(f"Image 2 features detected: {feat2['keypoints'].shape[0]}")
 
         # Match using precomputed features
-        result = xfeat_model.match_xfeat(img1, feat1, img2, feat2, top_k=4096, draw_match_lines=True)
-        
+        result = xfeat_model.match_xfeat(img1, feat1, img2, feat2, top_k=4096)
+
         if result is None:
             raise ValueError("Feature matching returned None (not enough matches).")
-        
-        if result.output_canvas is None:
-            print("Not enough matches found (< 4)")
+
+        print(f"Matches: {result.nr_matches}")
+
+        # Visualize the matches using warp_corners_and_draw_matches
+        im1 = xfeat_model.prepare_np_array_image_for_xfeat(img1)
+        im2 = xfeat_model.prepare_np_array_image_for_xfeat(img2)
+
+        output_canvas = warp_corners_and_draw_matches(
+            result.mkpts_0,  # type: ignore
+            result.mkpts_1,  # type: ignore
+            im1,
+            im2,
+            draw_match_lines=True
+        )
+
+        if output_canvas is None:
+            print("Visualization failed")
             return
 
-        print(f"Matches: {result.nr_matches}, Inlier ratio: {result.inlier_ratio:.2%}")
-
         # Convert BGR to RGB and plot
-        output_rgb = cv2.cvtColor(result.output_canvas, cv2.COLOR_BGR2RGB)
+        output_rgb = cv2.cvtColor(output_canvas, cv2.COLOR_BGR2RGB)
         plot_1_image(
             image=output_rgb,
-            title=f'XFeat Detect & Compute Test: {result.nr_matches} matches, Inlier ratio: {result.inlier_ratio:.2%}',
+            title=f'XFeat Detect & Compute Test: {result.nr_matches} matches',
             tight_layout=True
         )
     
     #! run the test methods
-    # test_match_xfeat()
+    test_match_xfeat()
     test_xfeat_detect_and_compute()
     
 if __name__ == '__main__':
