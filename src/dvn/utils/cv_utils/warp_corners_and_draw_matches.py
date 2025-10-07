@@ -47,7 +47,8 @@ def warp_and_draw_corners(
 
     # warped_corners stores the transformed corner coordinates of img1 projected into img2's coordinate space
     if warped_corners is not None:
-        pts = np.int32(warped_corners.reshape(-1, 2))
+        pts = warped_corners.reshape(-1, 1, 2).astype(np.int32)
+        # pts = np.int32(warped_corners.reshape(-1, 2)) # this was the old way of doing it, but the type error was annoying
         cv2.polylines(
             img=img2_with_corners,
             pts=[pts],
