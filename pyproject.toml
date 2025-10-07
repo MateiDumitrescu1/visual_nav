@@ -15,6 +15,7 @@ dependencies = [
     "pyrefly",
     "onnxruntime",
     "kornia", # for LightGlue.
+    "hdbscan", #for HDBSCAN clustering.
 ]
 
 [tool.mypy]

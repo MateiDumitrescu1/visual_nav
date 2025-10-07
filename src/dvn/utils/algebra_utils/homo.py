@@ -10,7 +10,7 @@ def find_homography(
     debug_level: int = 0,
 ) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], float]:
     """
-    Find homography matrix between two sets of points (points1 and points2).
+    Uses `cv2.findHomography` to find homography matrix between two sets of points (points1 and points2).
     Also calculates the inlier ratio.
 
     ### Returns:
