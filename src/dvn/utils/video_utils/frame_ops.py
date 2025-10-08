@@ -155,8 +155,12 @@ def stitch_frames_into_video(
 
 #! ------------------ TESTING ------------------
 
-
+from paths_ import output_dir
 def test_get_frames_of_video():
-    # video_path = "../../../../data/"
-    # output_dir = "../data/test_videos/frames"
-    # get_frames_of_video(video_path, output_dir, fps=5, overwrite=True, verbose=True)
+    video_path = "../../../../data/videos/marco_video_sunny.MP4"
+    out_dir = f"{output_dir}/test_video_frames"
+    get_frames_of_video(video_path, out_dir, fps=5, overwrite=True, verbose=True)
+    
+if __name__ == "__main__":
+    test_get_frames_of_video()
+    print("All tests passed!")

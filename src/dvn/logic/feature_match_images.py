@@ -218,7 +218,7 @@ def feature_match_images(
 
         # Decide whether to reject the match
         should_reject, reject_reason = reject_match(cluster_counts, noise_count, nr_matches)
-
+ 
         if should_reject:
             print(f"❌ Match rejected: {reject_reason}")
             return None
