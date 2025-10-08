@@ -92,19 +92,28 @@ class XFeatModel:
         ~Look at https://colab.research.google.com/github/verlab/accelerated_features/blob/main/notebooks/minimal_example.ipynb 
         for more details about the output dictionary.
         """
-        #TODO check what `parse_input` does and if we should use it instead of `prepare_np_array_image_for_xfeat`
-        # Prepare the image for XFeat
-        im = self.prepare_np_array_image_for_xfeat(image) 
+        #* Prepare the image for XFeat (using either `prepare_np_array_image_for_xfeat` or `parse_input`)
+        #! the detectAndCompute accepts both, but for detectAndComputeDense only parse_input works
+        
+        # im = self.prepare_np_array_image_for_xfeat(image) 
+        im = self.xfeat.parse_input(image) # pyright: ignore[reportAttributeAccessIssue]
+        
+        #* Detect and compute features
         features = self.xfeat.detectAndCompute(im, top_k=top_k)[0] # pyright: ignore[reportAttributeAccessIssue]
-        features.update({'image_size': (im.shape[1], im.shape[0])})    
+        
+        #* put the required image size metadata
+        # features.update({'image_size': (im.shape[1], im.shape[0])})    <----- ❗ this was for when we used prepare_np_array_image_for_xfeat
+        h, w = int(im.shape[-2]), int(im.shape[-1])          # BCHW -> H, W
+        features['image_size'] = (w, h)                    # (W, H)
         return features
 
-    def xfeat_detect_and_compute_dense(self, image: np.ndarray, top_k: int = 8000) -> dict:
+    def xfeat_detect_and_compute_DENSE(self, image: np.ndarray, top_k: int = 8000) -> dict:
         """
         """
-        # Prepare the image for XFeat
+        #* Prepare the image for XFeat
         # im = self.prepare_np_array_image_for_xfeat(image)
-        im = self.xfeat.parse_input(image)
+        im = self.xfeat.parse_input(image) # pyright: ignore[reportAttributeAccessIssue]
+        #* Detect and compute dense features
         features = self.xfeat.detectAndComputeDense(im, top_k=top_k) # pyright: ignore[reportAttributeAccessIssue]
         return features
     
@@ -375,8 +384,8 @@ def test_():
         
     def test_steerer_semi_dense():
         xfeat_model_steerer.ensure_we_are_using_steerer_model()
-        feat1 = xfeat_model_steerer.xfeat_detect_and_compute_dense(rot_im1) #! use the rotated image
-        feat2 = xfeat_model_steerer.xfeat_detect_and_compute_dense(img2)
+        feat1 = xfeat_model_steerer.xfeat_detect_and_compute_DENSE(rot_im1) #! use the rotated image
+        feat2 = xfeat_model_steerer.xfeat_detect_and_compute_DENSE(img2)
         
         mkpts_0, mkpts_1, rot = xfeat_model_steerer.xfeat_match_semi_dense_steerer(feat1, feat2, min_cossim=0.9)
         print(f"Matches: {len(mkpts_0)}, rotation: {rot}")
@@ -403,9 +412,9 @@ def test_():
         )
     
     #! run the test methods
-    # feature_match_xfeat_full()
-    # test_xfeat_detect_and_compute()
-    # test_steerer_sparse()
+    feature_match_xfeat_full()
+    test_xfeat_detect_and_compute()
+    test_steerer_sparse()
     test_steerer_semi_dense()
     
 if __name__ == '__main__':
