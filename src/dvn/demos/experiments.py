@@ -114,10 +114,167 @@ def calibrate_min_cossim() -> None:
 
 def match_first_drone_frame_against_rotations():
     """
-    Use the default XFeat. 
+    Use the default XFeat.
     Match the first drone frame against all rotated satellite images that are available in the `get_sat_img_features` method.
+    Tests different downsampling factors (1.0, 0.9, 0.8, 0.7, 0.6) to find optimal scale.
+    Visualize the matches using draw_matches and save results to output directory.
     """
-    
+    from dvn.utils.cv_utils.warp_corners_and_draw_matches import draw_matches
+    from dvn.models.xfeat_.xfeat_methods import XFEAT_MODELS
+
+    # Create output directory for results
+    save_results_dir = output_dir + "/first_frame_rotation_matches"
+    os.makedirs(save_results_dir, exist_ok=True)
+    print(f"Results will be saved to: {save_results_dir}\n")
+
+    # Initialize the default XFeat model
+    xfeat_model = XFeatModel(top_k=4096)
+
+    # Get the first drone frame
+    print("Loading drone frames...")
+    drone_frames = get_drone_frames()
+    drone_frame_original = drone_frames[0]
+    print(f"Using first drone frame (original shape: {drone_frame_original.shape})\n")
+
+    # Define downsampling factors to test
+    downsample_factors = [1.0, 0.9, 0.8, 0.7, 0.6]
+
+    # Get all rotated satellite image features
+    print("Loading satellite image features for all rotations...")
+    all_sat_features = get_sat_img_features()
+    print(f"Loaded features for {len(all_sat_features)} rotations: {sorted(all_sat_features.keys())}°\n")
+
+    # Store results for summary: results[downsample_factor][rotation_angle]
+    results = {}
+
+    print("=" * 80)
+    print("MATCHING FIRST DRONE FRAME AGAINST ALL ROTATIONS WITH DIFFERENT SCALES")
+    print("=" * 80)
+
+    # Test each downsampling factor
+    for downsample_factor in downsample_factors:
+        print(f"\n{'=' * 80}")
+        print(f"TESTING DOWNSAMPLE FACTOR: {downsample_factor}")
+        print(f"{'=' * 80}\n")
+
+        # Downsample the drone frame if needed
+        if downsample_factor == 1.0:
+            drone_frame = drone_frame_original
+        else:
+            new_width = int(drone_frame_original.shape[1] * downsample_factor)
+            new_height = int(drone_frame_original.shape[0] * downsample_factor)
+            drone_frame = cv2.resize(drone_frame_original, (new_width, new_height), interpolation=cv2.INTER_AREA)
+
+        print(f"Drone frame shape: {drone_frame.shape} (scale: {downsample_factor})")
+
+        # Compute features for the downsampled drone frame
+        print("Computing features for drone frame...")
+        drone_features = xfeat_model.xfeat_detect_and_compute(drone_frame, top_k=4096)
+        print(f"Detected {drone_features['keypoints'].shape[0]} keypoints in drone frame\n")
+
+        # Initialize results for this downsample factor
+        results[downsample_factor] = {}
+
+        # Match against each rotation
+        for rotation_angle in sorted(all_sat_features.keys()):
+            sat_features = all_sat_features[rotation_angle]
+
+            print(f"  Processing rotation: {rotation_angle}°", end=" ")
+
+            # Load the corresponding satellite image for visualization
+            sat_img_path = os.path.join(rotated_sat_dir, f"sat_rotated_{int(rotation_angle)}.png")
+            sat_img = cv2.imread(sat_img_path)
+
+            if sat_img is None:
+                print(f"[Warning: Failed to load satellite image, skipping...]")
+                continue
+
+            # Match using XFeat default sparse matching
+            mkpts_0, mkpts_1 = xfeat_model.xfeat_match_sparse_default(
+                drone_features,
+                sat_features
+            )
+
+            num_matches = len(mkpts_0)
+            print(f"-> {num_matches} matches")
+
+            # Visualize matches using draw_matches
+            if num_matches > 0:
+                # Create visualization with match lines
+                match_visualization = draw_matches(
+                    img1=drone_frame,
+                    img2=sat_img,
+                    ref_points=mkpts_0,
+                    dst_points=mkpts_1,
+                    inlier_mask=None,  # Draw all matches
+                    colors=None,  # Use default green color
+                    thickness=1
+                )
+
+                # Save the visualization with downsample factor in filename
+                output_filename = f"scale_{downsample_factor:.1f}_rotation_{int(rotation_angle):03d}_matches_{num_matches}.png"
+                output_path = os.path.join(save_results_dir, output_filename)
+                cv2.imwrite(output_path, match_visualization)
+
+                results[downsample_factor][rotation_angle] = {
+                    'matches': num_matches,
+                    'saved': True
+                }
+            else:
+                results[downsample_factor][rotation_angle] = {
+                    'matches': 0,
+                    'saved': False
+                }
+
+    # Print comprehensive summary
+    print("\n" + "=" * 80)
+    print("COMPREHENSIVE MATCHING SUMMARY")
+    print("=" * 80)
+
+    # For each downsample factor, show summary
+    for downsample_factor in downsample_factors:
+        if downsample_factor not in results or not results[downsample_factor]:
+            continue
+
+        print(f"\nDownsample Factor: {downsample_factor}")
+        print("-" * 80)
+        print(f"{'Rotation (°)':<15} {'Matches':<15} {'Visualization Saved':<20}")
+        print("-" * 80)
+
+        for rotation_angle in sorted(results[downsample_factor].keys()):
+            stats = results[downsample_factor][rotation_angle]
+            saved_status = "✓" if stats['saved'] else "✗"
+            print(f"{rotation_angle:<15.1f} {stats['matches']:<15} {saved_status:<20}")
+
+        # Find best rotation for this downsample factor
+        best_rotation = max(results[downsample_factor].items(), key=lambda x: x[1]['matches'])
+        print(f"\nBest rotation for scale {downsample_factor}: {best_rotation[0]}° with {best_rotation[1]['matches']} matches")
+
+    # Find overall best combination
+    print("\n" + "=" * 80)
+    print("OVERALL BEST MATCH")
+    print("=" * 80)
+
+    best_overall = None
+    best_matches = 0
+
+    for downsample_factor, rotations in results.items():
+        for rotation_angle, stats in rotations.items():
+            if stats['matches'] > best_matches:
+                best_matches = stats['matches']
+                best_overall = (downsample_factor, rotation_angle, stats['matches'])
+
+    if best_overall:
+        print(f"Best overall match:")
+        print(f"  Scale: {best_overall[0]}")
+        print(f"  Rotation: {best_overall[1]}°")
+        print(f"  Matches: {best_overall[2]}")
+        print("=" * 80)
+
+    print(f"\nAll visualizations saved to: {save_results_dir}")
+
     
 if __name__ == '__main__':
-    calibrate_min_cossim()
+    # calibrate_min_cossim()
+    match_first_drone_frame_against_rotations()
+    pass
