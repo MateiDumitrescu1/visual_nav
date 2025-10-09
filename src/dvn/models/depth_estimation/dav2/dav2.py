@@ -6,7 +6,7 @@ import torch
 from transformers import AutoImageProcessor, AutoModelForDepthEstimation
 import matplotlib.pyplot as plt
 
-drone_img_path = "../../../../../data/images/marco_sunny_frames/frame_000236.jpg"
+drone_img_path = "../../../../../data/images/marco_sunny_frames/original/frame_000236.jpg"
 sat_img_path = "../../../../../data/images/sat.png"
 
 def load_model(model_id: str = "depth-anything/Depth-Anything-V2-Small-hf"):

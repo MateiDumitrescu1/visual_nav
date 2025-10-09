@@ -13,7 +13,7 @@ from dvn.models.xfeat_.xfeat_methods import XFeatModel
 from dvn.models.xfeat_.xfeat_utils import save_features_to_folder, load_features_from_folder
 
 rotated_sat_dir = output_dir + '/rotated_sat_img'
-drone_frames_dir = images_dir + '/marco_sunny_frames'
+drone_frames_dir = images_dir + '/marco_sunny_frames/original'
 
 @cache
 def get_sat_img_features(load_device="cuda") -> Dict[float, dict]:
