@@ -1,4 +1,5 @@
 import time
+from typing import Sequence
 import cv2
 import numpy as np
 import onnxruntime
@@ -42,7 +43,7 @@ class NeuFlowV2:
         input_tensor = input_img[np.newaxis, :, :, :].astype(np.float32)
         return input_tensor
 
-    def inference(self, input_tensors: tuple[np.ndarray, np.ndarray]) -> np.ndarray:
+    def inference(self, input_tensors: tuple[np.ndarray, np.ndarray]) -> Sequence:
         start = time.perf_counter()
         outputs = self.session.run(self.output_names, {self.input_names[0]: input_tensors[0],
                                                        self.input_names[1]: input_tensors[1]})
