@@ -8,6 +8,7 @@ from functools import cache
 from dvn.utils.cv_utils.warp_corners_and_draw_matches import warp_corners_and_draw_matches
 from dvn.models.config import FeatureMatchingOutput
 from enum import StrEnum
+from paths_ import models_dir
 
 #! config
 STEER_PERMUTATIONS = [
@@ -37,7 +38,8 @@ def get_default_pretrained_xfeat_model(top_k: int = 4096):
 @cache
 def get_steerer_pretrained_xfeat_model(top_k: int = 4096):
     xfeat = torch.hub.load('verlab/accelerated_features', 'XFeat', pretrained = False, top_k = top_k)
-    sd = torch.load('../../../../data/models/xfeat_perm_steer.pth', map_location='cpu')
+    model_path = os.path.join(models_dir, 'xfeat_perm_steer.pth')
+    sd = torch.load(model_path, map_location='cpu')
     for key in list(sd):
         sd['net.' + key] = sd[key]
         del sd[key]
@@ -236,31 +238,6 @@ class XFeatModel:
 
         return matches[:, :2].cpu().numpy(), matches[:, 2:].cpu().numpy(), rot1to2
     
-def save_mkpts_to_file(mkpts, output_folder, filename):
-    """
-    Save matched keypoints to a text file. Each line contains 'x y' coordinates.
-    mkpts: iterable of (x, y) pairs (e.g. numpy array shape (N,2))
-    output_folder: directory to write the file into
-    filename: name of the file ('.txt' will be appended if missing)
-    """
-    # ensure .txt extension
-    if not filename.lower().endswith('.txt'):
-        filename = filename + '.txt'
-
-    # create folder if missing
-    os.makedirs(output_folder, exist_ok=True)
-    file_path = os.path.join(output_folder, filename)
-
-    try:
-        with open(file_path, 'w') as f:
-            for pt in mkpts:
-                # format with 6 decimal places
-                f.write(f"{pt[0]:.6f} {pt[1]:.6f}\n")
-        print(f"Saved keypoints to {file_path}")
-    except Exception as e:
-        print(f"Error saving keypoints to file {file_path}: {e}")
-        
-        
 #! ------------------- TESTING -------------------
 from paths_ import PathLogic, TEST_SET
 from dvn.utils.image_utils.plot_images import plot_1_image

@@ -280,8 +280,7 @@ def generate_90_180_270_rotated_images(image: np.ndarray) -> Tuple[np.ndarray, n
     rotated_90 = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
     rotated_180 = cv2.rotate(image, cv2.ROTATE_180)
     rotated_270 = cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
-    # pyrefly: ignore  # bad-return
-    return [rotated_90, rotated_180, rotated_270]
+    return (rotated_90, rotated_180, rotated_270)
 
 
 def generate_rotations(image: np.ndarray, angles: List[float]) -> List[np.ndarray]:
@@ -373,7 +372,11 @@ def put_images_side_by_side(image1: np.ndarray, image2: np.ndarray, pad_color: t
     return combined_image
 
     
-def downsample_pyramid(img,scales):
+def downsample_pyramid(img: np.ndarray, scales: List[float]) -> List[np.ndarray]:
+    """
+    Generate a pyramid of downsampled images at different scale factors.
+    """
+    
     pyramid = [cv2.resize(img, None, fx=s, fy=s,
                         interpolation=cv2.INTER_AREA)
             for s in scales]
@@ -414,41 +417,90 @@ def split_video_into_frames_random_fps(video_path, output_path,second_lower: int
 
     cap.release()
 
-#! ---------------- TESTING ----------------
-def test_45_rotate():
-    sat_img_path = "./test_images/sat.png"
-    img = cv2.imread(sat_img_path)
-    angles_45 = [i for i in range(0, 360, 45)]
-    # pyrefly: ignore  # bad-argument-type
-    rotated_images = generate_rotations(img, angles_45)
-    for i, img in enumerate(rotated_images):
-        plt.subplot(3, 3, i + 1)
-        plt.imshow(img)
-        plt.axis('off')
-    plt.show()
-    
-def side_by_side_test():
-    cat_img_path = "./test_images/cat1.jpg"
-    sat_img_path = "./test_images/sat.png"
-    cat_img = cv2.imread(cat_img_path)
-    sat_img = cv2.imread(sat_img_path)
-    # pyrefly: ignore  # bad-argument-type
-    combined_image = put_images_side_by_side(cat_img, sat_img, pad_color=(0, 0, 0))
-    plt.imshow(combined_image)
-    plt.axis('off')
-    plt.show()
-def test_downsample_pyramid():
-    cat_img_path = "./test_images/cat1.jpg"
-    img = cv2.imread(cat_img_path)
-    pyramid = downsample_pyramid(img, scales=[0.13, 0.20, 0.33])
-    for i, img in enumerate(pyramid):
-        print(img.shape)
-        plt.subplot(1, len(pyramid), i + 1)
-        plt.imshow(img)
-        plt.axis('off')
-    plt.show()
-    
+#! ---------------- EXECUTION OF LOGIC ----------------
 
-if __name__ == "__main__":
-    test_45_rotate()
+def rotate_and_save_with_angle_step(img_path: str, output_dir: str, angle_step: float = 5.0):
+    """
+    Rotate the input image at specified angle increments and save each rotated image.
+
+    Args:
+        img_path (str): Path to the input image.
+        output_dir (str): Directory where rotated images will be saved.
+        angle_step (float): Angle increment in degrees for rotation. Defaults to 5.0 degrees.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    img = cv2.imread(img_path)
+    if img is None:
+        raise FileNotFoundError(f"Image not found at {img_path}")
+
+    # Extract the base filename without extension from the input path
+    base_filename = Path(img_path).stem
+
+    # Generate angles from 0 to 360 with the specified step
+    angles = [float(i) for i in range(0, 360, int(angle_step))]
+    rotated_images = generate_rotations(img, angles)
+
+    for i, img in enumerate(rotated_images):
+        angle = angles[i]
+        filename = f"{base_filename}_rotated_{angle:.0f}.png"
+        save_image_cv2(img, output_dir, filename)
+
+def execute_():
+    # Example usage of rotate_and_save_with_angle_step
+    input_image_path = "../../../../data/images/sat.png"
+    output_directory = "../../../../data/output/rotated_sat_img"
+    angle_increment = 5.0  # Rotate every 15 degrees
+
+    rotate_and_save_with_angle_step(input_image_path, output_directory, angle_increment)
+    print("Finished execution!")
+
+#! ---------------- TESTING ----------------
+
+def test_():
+    sat_img_path = "../../../../data/images/sat.png"
+    sat_img = cv2.imread(sat_img_path)
+    if sat_img is None:
+        raise FileNotFoundError(f"Image not found at {sat_img_path}")
+    
+    def test_generate_rotations():
+        angles_45 = [float(i) for i in range(0, 360, 45)]
+        # pyrefly: ignore  # bad-argument-type
+        rotated_images = generate_rotations(sat_img, angles_45)
+        for i, img in enumerate(rotated_images):
+            plt.subplot(3, 3, i + 1)
+            plt.imshow(img)
+            plt.axis('off')
+        plt.show()
+        
+    def side_by_side_test():
+        cat_img_path = "./test_images/cat1.jpg"
+        sat_img_path = "./test_images/sat.png"
+        cat_img = cv2.imread(cat_img_path)
+        sat_img = cv2.imread(sat_img_path)
+        # pyrefly: ignore  # bad-argument-type
+        combined_image = put_images_side_by_side(cat_img, sat_img, pad_color=(0, 0, 0))
+        plt.imshow(combined_image)
+        plt.axis('off')
+        plt.show()
+        
+    def test_downsample_pyramid():
+        
+        img = cv2.imread(sat_img_path)
+        
+        pyramid = downsample_pyramid(img, scales=[0.13, 0.20, 0.33])
+        for i, img in enumerate(pyramid):
+            print(img.shape)
+            plt.subplot(1, len(pyramid), i + 1)
+            plt.imshow(img)
+            plt.axis('off')
+        plt.show()
+    
+    #! run the test methods
+    test_generate_rotations()
+    
     print("All tests passed!")
+    
+if __name__ == "__main__":
+    # test_()
+    execute_()
+    
