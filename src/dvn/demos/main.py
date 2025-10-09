@@ -170,7 +170,9 @@ def demo0():
     downsample_factor = 0.6
 
     # Create timestamped output directory for demo0
-    current_time = str(int(time.time()))
+    # Human-readable, filesystem-safe timestamp (e.g. "2025-10-09_14-32-05")
+    current_time: str = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
+    
     demo0_output_dir = os.path.join(demo_output_dir, 'demo0', current_time)
     os.makedirs(demo0_output_dir, exist_ok=True)
     print(f"Output directory created: {demo0_output_dir}")
@@ -261,6 +263,8 @@ def demo0():
             sat_h, sat_w = sat_img.shape[:2]
             print(f"Using satellite image (rotation {best_rotation}°): {sat_w}x{sat_h}")
 
+            nr_matches = len(best_mkpts_drone)
+            
             # Create the visualization
             viz_canvas = warp_corners_and_draw_matches(
                 ref_points=best_mkpts_drone,
@@ -273,7 +277,7 @@ def demo0():
 
             if viz_canvas is not None:
                 # Save the visualization
-                output_path = os.path.join(demo0_output_dir, f'frame_{frame_idx:03d}_rot_{best_rotation:.1f}.png')
+                output_path = os.path.join(demo0_output_dir, f'frame_{frame_idx:03d}_rot_{best_rotation:.1f}@{nr_matches}_matches.png')
                 cv2.imwrite(output_path, viz_canvas)
                 print(f"✓ Saved visualization to: {output_path}")
             else:
