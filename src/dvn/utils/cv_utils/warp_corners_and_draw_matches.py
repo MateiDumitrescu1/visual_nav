@@ -150,7 +150,11 @@ def warp_corners_and_draw_matches(
     H = None
     inlier_mask = None
     if precomputed_H is None and precomputed_inlier_mask is None:
-        H, inlier_mask, _ = find_homography(ref_points, dst_points)
+        try:
+            H, inlier_mask, _ = find_homography(ref_points, dst_points)
+        except Exception as e:
+            print(f"⚠️  Exception during find_homography: {e}")
+            return None
     else:
         H = precomputed_H
         inlier_mask = precomputed_inlier_mask
