@@ -31,14 +31,15 @@ def save_features_to_folder(features: dict, output_folder: str, filename_prefix:
     Save computed XFeat features to a folder as numpy arrays.
 
     ### Parameters:
-        - features: Dictionary containing 'keypoints', 'descriptors', 'scores', and optionally 'image_size'
+        - features: Dictionary containing 'keypoints', 'descriptors', and optionally 'scores', 'scales', 'image_size'
         - output_folder: Directory path where features will be saved
         - filename_prefix: Prefix for the saved files (e.g., 'image1', 'frame_001')
 
     ### Saves:
         - {filename_prefix}_keypoints.npy: Keypoint coordinates
         - {filename_prefix}_descriptors.npy: Feature descriptors
-        - {filename_prefix}_scores.npy: Feature scores
+        - {filename_prefix}_scores.npy: Feature scores (if available)
+        - {filename_prefix}_scales.npy: Feature scales (if available)
         - {filename_prefix}_metadata.npz: Additional metadata (image_size, etc.)
     """
     # Create output folder if it doesn't exist
@@ -48,19 +49,33 @@ def save_features_to_folder(features: dict, output_folder: str, filename_prefix:
         # Convert torch tensors to numpy if needed
         keypoints = features['keypoints']
         descriptors = features['descriptors']
-        scores = features['scores']
+        scores = features.get('scores', None)
+        scales = features.get('scales', None)
 
         if torch.is_tensor(keypoints):
             keypoints = keypoints.cpu().numpy()
         if torch.is_tensor(descriptors):
             descriptors = descriptors.cpu().numpy()
-        if torch.is_tensor(scores):
+        if scores is not None and torch.is_tensor(scores):
             scores = scores.cpu().numpy()
+        if scales is not None and torch.is_tensor(scales):
+            scales = scales.cpu().numpy()
 
-        # Save each component
+        # Save each component (keypoints and descriptors are always required)
         np.save(os.path.join(output_folder, f"{filename_prefix}_keypoints.npy"), keypoints)
         np.save(os.path.join(output_folder, f"{filename_prefix}_descriptors.npy"), descriptors)
-        np.save(os.path.join(output_folder, f"{filename_prefix}_scores.npy"), scores)
+
+        # Save scores only if available
+        if scores is not None:
+            np.save(os.path.join(output_folder, f"{filename_prefix}_scores.npy"), scores)
+        else:
+            print(f"Warning: No scores available for {filename_prefix}, skipping scores file")
+
+        # Save scales only if available
+        if scales is not None:
+            np.save(os.path.join(output_folder, f"{filename_prefix}_scales.npy"), scales)
+        else:
+            print(f"Warning: No scales available for {filename_prefix}, skipping scales file")
 
         # Save metadata (image_size and any other non-array data)
         metadata = {}
@@ -84,43 +99,63 @@ def load_features_from_folder(folder_path: str, filename_prefix: str, device: st
         - device: Device to load tensors to ('cpu' or 'cuda')
 
     ### Returns:
-        Dictionary containing 'keypoints', 'descriptors', 'scores', and optionally 'image_size'
+        Dictionary containing 'keypoints', 'descriptors', and optionally 'scores', 'scales', 'image_size'
 
     ### Raises:
         FileNotFoundError: If required feature files are not found
         RuntimeError: If there's an error loading the files
     """
     try:
-        # Load numpy arrays
+        # Define file paths
         keypoints_path = os.path.join(folder_path, f"{filename_prefix}_keypoints.npy")
         descriptors_path = os.path.join(folder_path, f"{filename_prefix}_descriptors.npy")
         scores_path = os.path.join(folder_path, f"{filename_prefix}_scores.npy")
+        scales_path = os.path.join(folder_path, f"{filename_prefix}_scales.npy")
         metadata_path = os.path.join(folder_path, f"{filename_prefix}_metadata.npz")
 
-        # Check if files exist
+        # Check if required files exist
         if not os.path.exists(keypoints_path):
             raise FileNotFoundError(f"Keypoints file not found: {keypoints_path}")
         if not os.path.exists(descriptors_path):
             raise FileNotFoundError(f"Descriptors file not found: {descriptors_path}")
-        if not os.path.exists(scores_path):
-            raise FileNotFoundError(f"Scores file not found: {scores_path}")
 
-        # Load arrays
+        # Load required arrays
         keypoints = np.load(keypoints_path)
         descriptors = np.load(descriptors_path)
-        scores = np.load(scores_path)
+
+        # Load scores if available, otherwise print warning
+        scores = None
+        if os.path.exists(scores_path):
+            scores = np.load(scores_path)
+        else:
+            print(f"Warning: Scores file not found for {filename_prefix}, loading without scores")
+
+        # Load scales if available, otherwise print warning
+        scales = None
+        if os.path.exists(scales_path):
+            scales = np.load(scales_path)
+        else:
+            print(f"Warning: Scales file not found for {filename_prefix}, loading without scales")
 
         # Convert to torch tensors
         keypoints_tensor = torch.from_numpy(keypoints).to(device)
         descriptors_tensor = torch.from_numpy(descriptors).to(device)
-        scores_tensor = torch.from_numpy(scores).to(device)
 
         # Create features dictionary
         features = {
             'keypoints': keypoints_tensor,
             'descriptors': descriptors_tensor,
-            'scores': scores_tensor,
         }
+
+        # Add scores if available
+        if scores is not None:
+            scores_tensor = torch.from_numpy(scores).to(device)
+            features['scores'] = scores_tensor
+
+        # Add scales if available
+        if scales is not None:
+            scales_tensor = torch.from_numpy(scales).to(device)
+            features['scales'] = scales_tensor
 
         # Load metadata if exists
         if os.path.exists(metadata_path):

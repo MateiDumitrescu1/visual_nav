@@ -17,7 +17,7 @@ def calibrate_min_cossim() -> None:
     for each drone frame against the original (0°) satellite image. The goal is to find a good balance between
     having enough matches and filtering out false positives.
     """
-    from dvn.utils.cv_utils.warp_corners_and_draw_matches import warp_corners_and_draw_matches
+    from dvn.utils.cv_utils.warp_corners_and_draw_matches import warp_corners_and_draw_matches, draw_matches
     from dvn.models.xfeat_.xfeat_methods import XFEAT_MODELS
 
     save_results_dir = output_dir + "/min_cossim_calibration_output"
@@ -41,11 +41,23 @@ def calibrate_min_cossim() -> None:
 
     # Get the first drone frame only
     print("Loading drone frames...")
-    drone_frames = get_drone_frames()
+    drone_frames = get_drone_frames(downsample_factor=0.6)
     print(f"Loaded {len(drone_frames)} drone frames")
     drone_frame = drone_frames[0]
     print(f"Using first drone frame for calibration\n")
 
+    # Validate drone_frame and print its height and width
+    if drone_frame is None:
+        raise ValueError("drone_frame is None - failed to load drone frame")
+
+    # For color images drone_frame.shape == (height, width, channels); extract height and width
+    drone_frame_height: int
+    drone_frame_width: int
+    drone_frame_height, drone_frame_width = drone_frame.shape[:2]
+
+    print(f"Drone frame height: {drone_frame_height}")
+    print(f"Drone frame width: {drone_frame_width}")
+    
     # Compute features for the drone frame once (reuse for all tests)
     print("Computing features for drone frame...")
     drone_features = xfeat_model_steerer.xfeat_detect_and_compute(drone_frame, top_k=4096)
@@ -76,12 +88,14 @@ def calibrate_min_cossim() -> None:
         print(f"  Matches: {num_matches} (rotation: {rot})")
 
         # Visualize and save the matches
-        output_canvas = warp_corners_and_draw_matches(
-            mkpts_0,
-            mkpts_1,
-            drone_frame,
-            sat_img,
-            draw_match_lines=True
+        output_canvas = draw_matches(
+            img1=drone_frame,
+            img2=sat_img,
+            ref_points=mkpts_0,
+            dst_points=mkpts_1,
+            inlier_mask=None,  # Draw all matches
+            colors=None,  # Use default green color
+            thickness=1
         )
 
         if output_canvas is not None:
@@ -275,6 +289,6 @@ def match_first_drone_frame_against_rotations():
 
     
 if __name__ == '__main__':
-    # calibrate_min_cossim()
-    match_first_drone_frame_against_rotations()
+    calibrate_min_cossim()
+    # match_first_drone_frame_against_rotations()
     pass

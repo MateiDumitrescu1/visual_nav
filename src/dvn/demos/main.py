@@ -5,6 +5,7 @@
 #TODO estimate rotation with optical flow and match the drone frame at the right rotation to the satellite image
 from typing import Dict
 import os
+import time
 import cv2
 import numpy as np
 from functools import cache
@@ -17,8 +18,8 @@ rotated_sat_dir = output_dir + '/rotated_sat_img'
 drone_frames_dir = images_dir + '/marco_sunny_frames'
 demo_output_dir = output_dir + '/demo_output'
 
-@cache
-def get_sat_img_features(load_device="cuda") -> Dict[float, dict]:
+#TODO make the features be saved in folders: sparse_ and dense_ so that we can load them separately
+def get_sat_img_features(load_device="cuda", dense:bool = False) -> Dict[float, dict]:
     """
     Read the folder with all the rotations of the sat images.
     For each image, see if the folder already has the features computed. If not, compute and save them.
@@ -26,7 +27,10 @@ def get_sat_img_features(load_device="cuda") -> Dict[float, dict]:
     ### Params:
         load_device: str
             Device to load features (using `load_features_from_folder`) to ('cpu' or 'cuda'). Default is 'cuda'.
-    
+        dense: bool
+            If True, use dense feature detection (xfeat_detect_and_compute_DENSE) and save/load with 'dense' prefix.
+            Default is False (uses sparse features).
+
     ### Returns:
         Dictionary mapping rotation angles (in degrees) to their computed features.
         Each feature dict contains: 'keypoints', 'descriptors', 'scores', 'image_size'
@@ -48,16 +52,24 @@ def get_sat_img_features(load_device="cuda") -> Dict[float, dict]:
         raise ValueError(f"No image files found in {rotated_sat_dir}")
 
     print(f"Found {len(image_files)} satellite images to process")
+    print(f"Using {'dense' if dense else 'sparse'} feature detection")
 
     for image_file in sorted(image_files):
         # Get the filename without extension for use as prefix
         filename_prefix = os.path.splitext(image_file)[0]
+
+        # Add 'dense' prefix if using dense features
+        if dense:
+            filename_prefix = f"dense_{filename_prefix}"
+
         image_path = os.path.join(rotated_sat_dir, image_file)
 
         # Extract rotation angle from filename (e.g., "sat_rotated_45.png" -> 45.0)
         try:
             # Expecting format: sat_rotated_<angle>.png
-            rotation_angle = float(filename_prefix.split('_')[-1])
+            # If dense prefix is used, it will be "dense_sat_rotated_<angle>"
+            base_filename = filename_prefix.replace("dense_", "") if dense else filename_prefix
+            rotation_angle = float(base_filename.split('_')[-1])
         except (ValueError, IndexError):
             print(f"Warning: Could not extract rotation angle from {filename_prefix}, skipping...")
             continue
@@ -76,8 +88,11 @@ def get_sat_img_features(load_device="cuda") -> Dict[float, dict]:
                 print(f"Warning: Failed to read image {image_path}, skipping...")
                 continue
 
-            # Detect and compute features
-            features = xfeat_model.xfeat_detect_and_compute(image, top_k=4096)
+            # Detect and compute features (dense or sparse based on parameter)
+            if dense:
+                features = xfeat_model.xfeat_detect_and_compute_DENSE(image, top_k=8000)
+            else:
+                features = xfeat_model.xfeat_detect_and_compute(image, top_k=4096)
 
             # Save features for future use
             save_features_to_folder(features, rotated_sat_dir, filename_prefix)
@@ -89,12 +104,31 @@ def get_sat_img_features(load_device="cuda") -> Dict[float, dict]:
     print(f"\nTotal features loaded/computed: {len(all_features)}")
     return all_features
 
+
 @cache
-def get_original_sat_img_features() -> dict:
+def get_sat_img_features_sparse(load_device="cuda") -> Dict[float, dict]:
+    """
+    @cache wrapper to get sparse satellite image features.
+    """
+    return get_sat_img_features(load_device=load_device, dense=False)
+
+@cache
+def get_sat_img_features_dense(load_device="cuda") -> Dict[float, dict]:
+    """
+    @cache wrapper to get dense satellite image features.
+    """
+    return get_sat_img_features(load_device=load_device, dense=True)
+
+
+def get_original_sat_img_features(dense: bool = False) -> dict:
     """
     Get features for the original (0°, meaning no rotation) satellite image.
     """
-    feature_dict = get_sat_img_features()
+    if dense:
+        feature_dict = get_sat_img_features_dense()
+    else:
+        feature_dict = get_sat_img_features_sparse()
+        
     if 0.0 not in feature_dict:
         raise ValueError("No features found for the original (0°) satellite image.")
     return feature_dict[0.0]
@@ -131,12 +165,13 @@ def demo0():
     For each of those frames:
     1. match against all rotations of the satelite (the pre-computed ones)
     2. pick the one with most matches
-    3. save the visualization (with draw_matches) to demo_output_dir / demo0
+    3. save the visualization (with draw_matches) to demo_output_dir / demo0 / current_time
     """
     downsample_factor = 0.6
 
-    # Create output directory for demo0
-    demo0_output_dir = os.path.join(demo_output_dir, 'demo0')
+    # Create timestamped output directory for demo0
+    current_time = str(int(time.time()))
+    demo0_output_dir = os.path.join(demo_output_dir, 'demo0', current_time)
     os.makedirs(demo0_output_dir, exist_ok=True)
     print(f"Output directory created: {demo0_output_dir}")
 
@@ -255,12 +290,21 @@ def run_demo():
 
 #! ---------------- TESTING ----------------
 def test_get_sat_img_features():
-    features_dict = get_sat_img_features()
+    # Test sparse features
+    features_dict = get_sat_img_features_sparse()
     for angle, feats in features_dict.items():
         print(f"Angle: {angle}°, Keypoints: {feats['keypoints'].shape[0]}, Descriptors: {feats['descriptors'].shape[0]}")
-        
-    original_feats = get_original_sat_img_features()
-    assert original_feats == features_dict[0.0], "Original features do not match features at 0°"
+
+    original_feats = get_original_sat_img_features(dense=False)
+    assert original_feats is features_dict[0.0], "Original features do not match features at 0°"
+
+    # Test dense features
+    dense_features_dict = get_sat_img_features_dense()
+    for angle, feats in dense_features_dict.items():
+        print(f"[Dense] Angle: {angle}°, Keypoints: {feats['keypoints'].shape}, Descriptors: {feats['descriptors'].shape}")
+
+    dense_original_feats = get_original_sat_img_features(dense=True)
+    assert dense_original_feats is dense_features_dict[0.0], "Original dense features do not match features at 0°"
 
 def test_get_drone_frames() -> None:
     frames = get_drone_frames()
