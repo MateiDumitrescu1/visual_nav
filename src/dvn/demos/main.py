@@ -373,19 +373,24 @@ def demo0():
     xfeat_model = XFeatModel(top_k=4096)
 
     #! rolling parameters and initial configuration
-    use_trust_fm_cache = True
-    #
+    save_images_with_only_best_corners = True
+    # ------------
+    #! use_trust_fm_cache is debug only !!! never use in production!!  
+    use_trust_fm_cache = False
+    # ------------
     similarity_threshold = 0.7 # if similarity > threshold, we consider the shapes be similar enough
     similarity_threshold_between_fm = 0.7 # if 2 feature matching outputs have similarity > this threshold, we consider them to be similar enough to each other so that we can trust the latest one 
     check_previous_frames_for_between_fm_similarity = 10 # how many previous frames to check for similarity between feature-matching corners
+    # ------------
     #! ignore `FM_strict_similarity_dynamic_factor` for now, we will implement it later
     FM_strict_similarity_dynamic_factor = 1.0 # every time we trust the inter-frame estimation, this goes down by 0.05 (to a minimum of 0.7). when we trust a FM estimation, this goes back to 1.0
     # this means the more time goes on without a FM trusted, we relax the similarity requirement for trusting the FM estimation
-    #
+    # ------------
     initialization_complete = False # when the inter-frame estimation and the feature matching estimation both give similar enough results, we can consider the initialization complete
-    #
+    # ------------
     prev_frame_features = None
     feature_matching_corners_history: dict[int, np.ndarray | None] = {} # stores all warped corners from feature matching: frame_idx -> (non-degenerated corners or None for degenerated frames)
+    # ------------
     # initial_rotation_to_try = 
     #* these 2 should always be updated together
     #TODO remove the `current_best_warped_corners` parameter since it can always be inferred from the `current_best_H` parameter
@@ -663,14 +668,21 @@ def demo0():
                             current_best_warped_corners = new_warped_corners
                             print(f"✓ Updated current_best_H and current_best_warped_corners using inter-frame composition")
 
+            #! determine the image to use for visualization
+            sat_img_drawn_to_use = None
+            if save_images_with_only_best_corners and current_best_warped_corners is not None:
+                sat_img_drawn_to_use = original_sat_img
+            else:
+                sat_img_drawn_to_use = img2_with_corners
+                
             #* Draw the best warped corners if available
             if current_best_warped_corners is not None:
-                img2_with_corners = draw_corners(img2_with_corners, current_best_warped_corners, color=(255, 0, 0), thickness=2) 
+                sat_img_drawn_to_use = draw_corners(sat_img_drawn_to_use, current_best_warped_corners, color=(255, 0, 0), thickness=2) 
 
             # Draw match lines on combined image
             viz_canvas = draw_matches(
                 img1=drone_frame,
-                img2=img2_with_corners,
+                img2=sat_img_drawn_to_use,
                 ref_points=best_mkpts_drone,
                 dst_points=best_mkpts_sat_original,  # Use rotated-back keypoints
                 inlier_mask=inlier_mask,

@@ -163,8 +163,9 @@ def compile_demo_video():
     Read all images from the demo output directory, stitch them into a video,
     and save the video in the local directory.
     """
-    time = "2025-10-10_12-40-57"
+    # time = "2025-10-10_12-40-57"
     # 2025-10-10_12-40-57
+    time = "2025-10-10_13-18-00"
     # images_folder: str = output_dir + "/demo_output" + "/demo0" + "/2025-10-10_11-02-23"
     images_folder: str = output_dir + "/demo_output" + "/demo0" + f"/{time}"
 
