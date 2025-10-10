@@ -1,4 +1,4 @@
-from typing import Optional, no_type_check
+from typing import Optional, Tuple, no_type_check
 import numpy as np
 import cv2
 from dvn.utils.algebra_utils.homo import find_homography
@@ -9,7 +9,7 @@ def warp_and_draw_corners(
     H: np.ndarray,
     color: tuple[int, int, int] = (0, 255, 0),
     thickness: int = 4,
-) -> np.ndarray | None:
+) -> Tuple[np.ndarray, np.ndarray] | None:
     """
     Warps the corners of img1 onto img2 using the homography matrix H and draws the warped polygon.
 
@@ -58,7 +58,7 @@ def warp_and_draw_corners(
             lineType=cv2.LINE_AA
         )  # pyright: ignore[reportCallIssue]
 
-    return img2_with_corners
+    return img2_with_corners, warped_corners
 
 
 def draw_matches(
@@ -166,9 +166,10 @@ def warp_corners_and_draw_matches(
     inlier_mask = inlier_mask.flatten()
 
     # Warp and draw corners on img2
-    img2_with_corners = warp_and_draw_corners(img1, img2, H)
-    if img2_with_corners is None:
+    result = warp_and_draw_corners(img1, img2, H)
+    if result is None:
         return None
+    img2_with_corners, warped_corners = result
 
     # Decide what image to return based on the `draw_match_lines` flag
     if draw_match_lines:

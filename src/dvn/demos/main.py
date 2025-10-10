@@ -149,7 +149,7 @@ def get_drone_frames(downsample_factor: float = 1.0) -> list[np.ndarray]:
             raise FileNotFoundError(f"Downsampled frames folder not found: {drone_frames_dir_to_read}")
 
     drone_frames = []
-    for image_file in os.listdir(drone_frames_dir_to_read):
+    for image_file in sorted(os.listdir(drone_frames_dir_to_read)):
         if image_file.lower().endswith(('.png', '.jpg', '.jpeg')):
             image_path = os.path.join(drone_frames_dir_to_read, image_file)
             image = cv2.imread(image_path)
