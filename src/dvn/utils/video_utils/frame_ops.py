@@ -2,7 +2,7 @@ import os, shutil, cv2
 from pathlib import Path
 import subprocess
 import numpy as np
-from paths_ import data_dir
+from paths_ import data_dir, output_dir
 #!
 def get_frames_of_video(
     video_path: str | os.PathLike,
@@ -107,34 +107,39 @@ def stitch_frames_into_video(
     # Gather image paths
     exts = {".png", ".jpg", ".jpeg", ".bmp", ".tiff"}
     paths = sorted(p for p in in_dir.iterdir() if p.suffix.lower() in exts)
+    print(f"Found {len(paths)} images in {in_dir}")
     if not paths:
         raise ValueError(f"No images found in {in_dir}")
 
-    # Determine max width/height & channels
+    # Read all images once and determine max dimensions
+    images = []
     max_w = max_h = 0
     ch = None
     for p in paths:
+        print(f"Reading {p.name}...")
         img = cv2.imread(str(p))
         if img is None:
             continue
+        images.append(img)
         h, w = img.shape[:2]
         max_h = max(max_h, h)
         max_w = max(max_w, w)
         ch = img.shape[2] if img.ndim == 3 else 1
+
+    if not images:
+        raise ValueError(f"No valid images could be loaded from {in_dir}")
 
     # Prepare output
     out_dir = Path(output_folder).expanduser().resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / output_file_name
 
-    # pyrefly: ignore  # missing-attribute
     fourcc = cv2.VideoWriter_fourcc(*codec)
     writer = cv2.VideoWriter(str(out_path), fourcc, fps, (max_w, max_h))
 
-    for p in paths:
-        img = cv2.imread(str(p))
-        if img is None:
-            continue
+    # Process pre-loaded images
+    for idx, img in enumerate(images):
+        print(f"Processing frame {idx + 1}/{len(images)}...")
         h, w = img.shape[:2]
         # create black canvas
         if ch == 1:
@@ -152,6 +157,29 @@ def stitch_frames_into_video(
     writer.release()
 
 
+#! ------------------ EXECUTION ------------------
+def compile_demo_video():
+    """
+    Read all images from the demo output directory, stitch them into a video,
+    and save the video in the local directory.
+    """
+    images_folder: str = output_dir + "/demo_output" + "/demo0" + "/2025-10-10_11-02-23"
+
+    # Define output video name and save location (current working directory)
+    output_video_name = "demo_video.mp4"
+    output_folder = "."  # Current directory
+
+    # Stitch frames into video using the existing function
+    stitch_frames_into_video(
+        folder_path=images_folder,
+        output_folder=output_folder,
+        output_file_name=output_video_name,
+        fps=10,  # Adjust fps as needed
+        codec="mp4v"
+    )
+
+    print(f"Video saved to: {Path(output_folder).resolve() / output_video_name}")
+
 
 #! ------------------ TESTING ------------------
 
@@ -160,7 +188,8 @@ def test_get_frames_of_video():
     video_path = "../../../../data/videos/marco_video_sunny.MP4"
     out_dir = f"{output_dir}/test_video_frames"
     get_frames_of_video(video_path, out_dir, fps=5, overwrite=True, verbose=True)
-    
+
 if __name__ == "__main__":
-    test_get_frames_of_video()
-    print("All tests passed!")
+    # test_get_frames_of_video()
+    compile_demo_video()
+    print("Completed!")
