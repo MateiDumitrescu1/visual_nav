@@ -65,6 +65,57 @@
         },
         "21": {
             "best_rotation": 65.0
+        },
+        "22": {
+            "best_rotation": 160.0
+        },
+        "23": {
+            "best_rotation": 160.0
+        },
+        "24": {
+            "best_rotation": 70.0
+        },
+        "25": {
+            "best_rotation": 65.0
+        },
+        "26": {
+            "best_rotation": 65.0
+        },
+        "27": {
+            "best_rotation": 65.0
+        },
+        "28": {
+            "best_rotation": 65.0
+        },
+        "29": {
+            "best_rotation": 65.0
+        },
+        "30": {
+            "best_rotation": 65.0
+        },
+        "31": {
+            "best_rotation": 65.0
+        },
+        "32": {
+            "best_rotation": 55.0
+        },
+        "33": {
+            "best_rotation": 10.0
+        },
+        "34": {
+            "best_rotation": 205.0
+        },
+        "35": {
+            "best_rotation": 175.0
+        },
+        "36": {
+            "best_rotation": 205.0
+        },
+        "37": {
+            "best_rotation": 20.0
+        },
+        "38": {
+            "best_rotation": 25.0
         }
     }
 }

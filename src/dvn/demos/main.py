@@ -17,7 +17,7 @@ from dvn.models.xfeat_.xfeat_utils import save_features_to_folder, load_features
 from dvn.utils.cv_utils.warp_corners_and_draw_matches import warp_corners_and_draw_matches, warp_and_draw_corners, draw_matches, draw_corners, warp_corners
 from dvn.utils.algebra_utils.homo import find_homography
 from dvn.utils.cv_utils.shape_degeneration import is_shape_degenerated
-from dvn.utils.cv_utils.shape_similarity import compare_warped_shapes
+from dvn.utils.cv_utils.shape_similarity import compute_shape_similarity
 
 rotated_sat_dir = output_dir + '/rotated_sat_img'
 drone_frames_dir = images_dir + '/marco_sunny_frames'
@@ -373,7 +373,7 @@ def demo0():
     xfeat_model = XFeatModel(top_k=4096)
 
     #! rolling parameters and initial configuration
-    similarity_threshold = 0.8 # if similarity > threshold, we consider the shapes be similar enough
+    similarity_threshold = 0.7 # if similarity > threshold, we consider the shapes be similar enough
     initialization_complete = False # when the inter-frame estimation and the feature matching estimation both give similar enough results, we can consider the initialization complete
     #
     prev_frame_features = None
@@ -553,13 +553,14 @@ def demo0():
                         composition_candidate = compute_new_frame_sat_homography(current_best_H, inter_frame_H)
                         
                         if composition_candidate is not None:
+                            #* compute the similarioty between the feature-matching and the inter-frame warped corners
                             try:
                                 composition_candidate_warped_corners = warp_corners(drone_frame, composition_candidate)
                                 if composition_candidate_warped_corners is None:
                                     print("⚠️  Warping with composition_candidate failed, skipping shape similarity check")
                                     similarity = 0.0
                                 else:
-                                    similarity, _ = compare_warped_shapes(composition_candidate_warped_corners, current_best_warped_corners, normalize=False)
+                                    similarity = compute_shape_similarity(composition_candidate_warped_corners, warped_corners)
                             except Exception as e:
                                 print("🔥" * 80)
                                 print(f"🔥🔥🔥  Exception during shape similarity comparison: {e}")
@@ -578,11 +579,12 @@ def demo0():
                                 #* they disagree
                                 if initialization_complete == False:
                                     # if we are still initializing, we have no choice but to trust the feature-matching estimation
+                                    print(f"🐈 Inter-frame estimation disagrees (similarity: {similarity:.3f} < {similarity_threshold}), but we are still initializing, so trusting feature-matching update")
                                     current_best_H = H.copy() 
                                     current_best_warped_corners = warped_corners.copy()
                                 else:
                                     # if we are already initialized, we trust the inter-frame estimation
-                                    print(f"⚠️⚠️⚠️ Inter-frame estimation disagrees (similarity: {similarity:.3f} < {similarity_threshold}), trusting inter-frame update")
+                                    print(f"🐶 Inter-frame estimation disagrees (similarity: {similarity:.3f} < {similarity_threshold}), trusting inter-frame update")
                                     current_best_H = composition_candidate
                                     current_best_warped_corners = composition_candidate_warped_corners
                         

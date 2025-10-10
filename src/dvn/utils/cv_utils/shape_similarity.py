@@ -4,103 +4,33 @@ Shape similarity utilities for comparing warped corner projections from homograp
 
 import numpy as np
 import cv2
-from typing import Tuple
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 
-#TODO is the shape similarity broken ? it's assigning high similarity to some weird stuff
-def compare_warped_shapes(
+def compute_shape_similarity(
     warped_corners1: np.ndarray,
-    warped_corners2: np.ndarray,
-    normalize: bool = True
-) -> Tuple[float, dict]:
+    warped_corners2: np.ndarray
+) -> float:
     """
     Compare the similarity of two shapes defined by warped corners from homography projections.
 
-    This method computes multiple similarity metrics between two quadrilaterals:
-    1. IoU (Intersection over Union) - measures area overlap
-    2. Shape Context Distance - measures shape structural similarity
-    3. Hausdorff Distance - measures maximum point-to-point distance
-    4. Centroid Distance - measures distance between shape centers
-    5. Area Ratio - measures relative size difference
+    This method computes IoU (Intersection over Union) between two quadrilaterals.
 
     Args:
         warped_corners1: First set of warped corners, shape (4, 1, 2) or (4, 2)
         warped_corners2: Second set of warped corners, shape (4, 1, 2) or (4, 2)
-        normalize: If True, normalize distances by the diagonal of the bounding box
 
     Returns:
-        overall_similarity: A combined similarity score in [0, 1] where 1 is identical
-        metrics_dict: Dictionary containing individual metrics:
-            - 'iou': Intersection over Union
-            - 'hausdorff_dist': Hausdorff distance (normalized if normalize=True)
-            - 'centroid_dist': Distance between centroids (normalized if normalize=True)
-            - 'area_ratio': Ratio of smaller/larger area
-            - 'corner_dist': Mean corner-to-corner distance (normalized if normalize=True)
+        iou: Intersection over Union score in [0, 1] where 1 is identical
     """
     # Reshape corners to (4, 2) format
     corners1 = warped_corners1.reshape(4, 2).astype(np.float32)
     corners2 = warped_corners2.reshape(4, 2).astype(np.float32)
 
-    # Compute bounding box diagonal for normalization
-    all_corners = np.vstack([corners1, corners2])
-    bbox_min = all_corners.min(axis=0)
-    bbox_max = all_corners.max(axis=0)
-    bbox_diagonal = np.linalg.norm(bbox_max - bbox_min)
-
-    # 1. Intersection over Union (IoU)
+    # Compute IoU
     iou = _compute_iou(corners1, corners2)
 
-    # 2. Hausdorff Distance (measures max distance between shapes)
-    hausdorff_dist = _compute_hausdorff_distance(corners1, corners2)
-    if normalize and bbox_diagonal > 0:
-        hausdorff_dist /= bbox_diagonal
-
-    # 3. Centroid Distance
-    centroid1 = corners1.mean(axis=0)
-    centroid2 = corners2.mean(axis=0)
-    centroid_dist = np.linalg.norm(centroid1 - centroid2)
-    if normalize and bbox_diagonal > 0:
-        centroid_dist /= bbox_diagonal
-
-    # 4. Area Ratio (ratio of smaller to larger area)
-    area1 = cv2.contourArea(corners1.reshape(-1, 1, 2))
-    area2 = cv2.contourArea(corners2.reshape(-1, 1, 2))
-    area_ratio = min(area1, area2) / max(area1, area2) if max(area1, area2) > 0 else 0.0
-
-    # 5. Corner-to-corner distance (after optimal alignment)
-    # Find best correspondence between corners
-    corner_dist = _compute_min_corner_distance(corners1, corners2)
-    if normalize and bbox_diagonal > 0:
-        corner_dist /= bbox_diagonal
-
-    # Compute overall similarity score
-    # Convert distances to similarities (lower distance = higher similarity)
-    hausdorff_sim = np.exp(-3 * hausdorff_dist)  # exp decay
-    centroid_sim = np.exp(-5 * centroid_dist)    # exp decay
-    corner_sim = np.exp(-3 * corner_dist)        # exp decay
-
-    # Weighted combination of all metrics
-    overall_similarity = (
-        0.4 * iou +           # 40% weight on overlap
-        0.2 * hausdorff_sim + # 20% weight on boundary similarity
-        0.2 * corner_sim +    # 20% weight on corner alignment
-        0.1 * centroid_sim +  # 10% weight on position
-        0.1 * area_ratio      # 10% weight on size
-    )
-
-    metrics_dict = {
-        'iou': float(iou),
-        'hausdorff_dist': float(hausdorff_dist),
-        'centroid_dist': float(centroid_dist),
-        'area_ratio': float(area_ratio),
-        'corner_dist': float(corner_dist),
-        'hausdorff_sim': float(hausdorff_sim),
-        'centroid_sim': float(centroid_sim),
-        'corner_sim': float(corner_sim),
-    }
-
-    return float(overall_similarity), metrics_dict
+    return float(iou)
 
 
 def _compute_iou(corners1: np.ndarray, corners2: np.ndarray) -> float:
@@ -141,50 +71,6 @@ def _compute_iou(corners1: np.ndarray, corners2: np.ndarray) -> float:
         return 0.0
 
     return intersection / union
-
-
-def _compute_hausdorff_distance(corners1: np.ndarray, corners2: np.ndarray) -> float:
-    """
-    Compute Hausdorff distance between two sets of corners.
-
-    Args:
-        corners1: First set of corners, shape (4, 2)
-        corners2: Second set of corners, shape (4, 2)
-
-    Returns:
-        Hausdorff distance
-    """
-    # Distance from each point in corners1 to closest point in corners2
-    dist_1_to_2 = np.array([np.min(np.linalg.norm(corners2 - p, axis=1)) for p in corners1])
-    # Distance from each point in corners2 to closest point in corners1
-    dist_2_to_1 = np.array([np.min(np.linalg.norm(corners1 - p, axis=1)) for p in corners2])
-
-    # Hausdorff distance is the maximum of these minimum distances
-    return max(dist_1_to_2.max(), dist_2_to_1.max())
-
-
-def _compute_min_corner_distance(corners1: np.ndarray, corners2: np.ndarray) -> float:
-    """
-    Compute minimum mean corner-to-corner distance by trying all 4 rotational alignments.
-
-    Args:
-        corners1: First set of corners, shape (4, 2)
-        corners2: Second set of corners, shape (4, 2)
-
-    Returns:
-        Minimum mean distance across all alignments
-    """
-    min_dist = float('inf')
-
-    # Try all 4 rotational alignments
-    for shift in range(4):
-        corners2_shifted = np.roll(corners2, shift, axis=0)
-        dist = np.mean(np.linalg.norm(corners1 - corners2_shifted, axis=1))
-        min_dist = min(min_dist, dist)
-
-    return min_dist
-
-
 
 
 # ============================================================================
@@ -268,16 +154,11 @@ def test_compare_warped_shapes():
     # Run comparisons and collect results
     results = []
     for name, shape in test_cases:
-        similarity, metrics = compare_warped_shapes(ref_shape, shape, normalize=True)
-        results.append((name, shape, similarity, metrics))
+        iou = compute_shape_similarity(ref_shape, shape)
+        results.append((name, shape, iou))
 
         print(f"\n{name}:")
-        print(f"  Overall Similarity: {similarity:.4f}")
-        print(f"  IoU:               {metrics['iou']:.4f}")
-        print(f"  Hausdorff Dist:    {metrics['hausdorff_dist']:.4f} (sim: {metrics['hausdorff_sim']:.4f})")
-        print(f"  Centroid Dist:     {metrics['centroid_dist']:.4f} (sim: {metrics['centroid_sim']:.4f})")
-        print(f"  Corner Dist:       {metrics['corner_dist']:.4f} (sim: {metrics['corner_sim']:.4f})")
-        print(f"  Area Ratio:        {metrics['area_ratio']:.4f}")
+        print(f"  IoU: {iou:.4f}")
 
     # Visualize all test cases
     n_cases = len(test_cases)
@@ -289,7 +170,7 @@ def test_compare_warped_shapes():
 
     ref_corners = ref_shape.reshape(4, 2)
 
-    for idx, (name, shape, similarity, metrics) in enumerate(results):
+    for idx, (name, shape, iou) in enumerate(results):
         ax = axes[idx]
         test_corners = shape.reshape(4, 2)
 
@@ -315,8 +196,8 @@ def test_compare_warped_shapes():
         ax.set_xlim(all_corners[:, 0].min() - margin, all_corners[:, 0].max() + margin)
         ax.set_ylim(all_corners[:, 1].min() - margin, all_corners[:, 1].max() + margin)
 
-        # Add title with similarity score
-        ax.set_title(f"{name}\nSimilarity: {similarity:.3f} | IoU: {metrics['iou']:.3f}",
+        # Add title with IoU score
+        ax.set_title(f"{name}\nIoU: {iou:.3f}",
                      fontsize=11, fontweight='bold')
         ax.set_aspect('equal')
         ax.grid(True, alpha=0.3)
