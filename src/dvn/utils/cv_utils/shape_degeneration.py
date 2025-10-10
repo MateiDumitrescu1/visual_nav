@@ -48,6 +48,11 @@ def is_shape_degenerated(
         >>> if is_bad:
         >>>     print(f"Bad homography detected: {diagnostics['reasons']}")
     """
+    if warped_corners is None:
+        print("🚨" * 80)
+        print("is_shape_degenerated was given None input!")
+        return True, {'reasons': ['No corners provided']}
+    
     # Reshape corners to (4, 2) format
     corners = warped_corners.reshape(4, 2).astype(np.float32)
 

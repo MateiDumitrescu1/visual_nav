@@ -61,6 +61,82 @@ def warp_and_draw_corners(
     return img2_with_corners, warped_corners
 
 
+def warp_corners(
+    img: np.ndarray,
+    H: np.ndarray
+) -> np.ndarray | None:
+    """
+    Computes the warped corners of an image using a homography matrix.
+
+    Args:
+        img: The image whose corners will be warped.
+        H: The homography matrix (3x3) that maps points from img to the destination space.
+
+    Returns:
+        np.ndarray | None: Warped corner coordinates (4, 1, 2) or None if warping fails.
+    """
+    # Get corners of the image
+    h, w = img.shape[:2]
+    corners = np.array([
+        [0, 0],
+        [w - 1, 0],
+        [w - 1, h - 1],
+        [0, h - 1]
+    ], dtype=np.float32).reshape(-1, 1, 2)
+
+    # Warp corners using the homography
+    try:
+        warped_corners = cv2.perspectiveTransform(corners, H)
+        if warped_corners is None or not np.all(np.isfinite(warped_corners)):
+            print("⚠️ perspectiveTransform resulted in invalid corners.")
+            return None
+        return warped_corners
+    except cv2.error as e:
+        print(f"⚠️ cv2.error during perspectiveTransform: {e}")
+        return None
+
+
+def draw_corners(
+    img: np.ndarray,
+    corners: np.ndarray,
+    color: tuple[int, int, int] = (0, 255, 0),
+    thickness: int = 2,
+) -> np.ndarray:
+    """
+    Draws a polygon shape defined by the given corners on the image.
+
+    Args:
+        img: The image to draw on (BGR format).
+        corners: Array of corner points defining the shape, shape (N, 2) or (N, 1, 2).
+        color: Color for the polygon in BGR format. Default is green (0, 255, 0).
+        thickness: Thickness of the polygon lines. Default is 4.
+
+    Returns:
+        np.ndarray: Copy of the image with the shape drawn on it.
+    """
+    # Create a copy to avoid modifying the original image
+    img_with_shape = img.copy()
+
+    # Reshape corners to ensure proper format for cv2.polylines
+    # Handle both (N, 2) and (N, 1, 2) formats
+    if corners.ndim == 2:
+        pts = corners.reshape(-1, 1, 2).astype(np.int32)
+    else:
+        pts = corners.reshape(-1, 1, 2).astype(np.int32)
+
+    # Draw the polygon
+    cv2.polylines(
+        img=img_with_shape,
+        pts=[pts],
+        isClosed=True,
+        color=color,
+        thickness=thickness,
+        lineType=cv2.LINE_AA
+    )  # pyright: ignore[reportCallIssue]
+
+    return img_with_shape
+
+
 def draw_matches(
     img1: np.ndarray,
     img2: np.ndarray,

@@ -13,7 +13,10 @@ from functools import cache
 from paths_ import output_dir, images_dir
 from dvn.models.xfeat_.xfeat_methods import XFeatModel
 from dvn.models.xfeat_.xfeat_utils import save_features_to_folder, load_features_from_folder
-from dvn.utils.cv_utils.warp_corners_and_draw_matches import warp_corners_and_draw_matches
+from dvn.utils.cv_utils.warp_corners_and_draw_matches import warp_corners_and_draw_matches, warp_and_draw_corners, draw_matches, draw_corners, warp_corners
+from dvn.utils.algebra_utils.homo import find_homography
+from dvn.utils.cv_utils.shape_degeneration import is_shape_degenerated
+from dvn.utils.cv_utils.shape_similarity import compare_warped_shapes
 
 rotated_sat_dir = output_dir + '/rotated_sat_img'
 drone_frames_dir = images_dir + '/marco_sunny_frames'
@@ -249,37 +252,72 @@ def demo0():
     xfeat_model = XFeatModel(top_k=4096)
 
     #! rolling parameters and initial configuration
-    prev_frame_drone_features = None
+    similarity_threshold = 0.8 # if similarity > threshold, we consider the shapes be similar enough
+    initialization_complete = False # when the inter-frame estimation and the feature matching estimation both give similar enough results, we can consider the initialization complete
+    #
+    prev_frame_features = None
     # initial_rotation_to_try = 
-    current_best_warped_corners_estimate = None
+    #* these 2 should always be updated together
+    #TODO remove the `current_best_warped_corners` parameter since it can always be inferred from the `current_best_H` parameter
+    current_best_warped_corners = None # the current accepted warped corners of the latest fully processed drone frame on the satellite image
+    current_best_H = None # the current accepted homography matrix (drone frame -> sat image)
     #! rolling parameters and initial configuration
     
-    # Process each drone frame (the frames are already downsampled)
+    def compute_new_frame_sat_homography(prev_frame__sat_img_H, inter_frame_H_):
+        if prev_frame__sat_img_H is None or inter_frame_H_ is None:
+            return None
+        
+        # prev_frame__sat_img_H: prev_frame -> sat_image
+        # inter_frame_H: prev_frame -> current_frame
+        # We want: current_frame -> sat_image
+        # So: H_new = H_prev @ inv(H_inter) to reverse the inter-frame transformation first
+        result = prev_frame__sat_img_H @ np.linalg.inv(inter_frame_H_)
+        return result
+    
+    #! main for loop: Process each drone frame (the frames are already downsampled)
     for frame_idx, drone_frame in enumerate(drone_frames):
+        inter_frame_H = None
+        
         print(f"\n{'='*60}")
         print(f"Processing drone frame {frame_idx + 1}/{len(drone_frames)}")
         print(f"{'='*60}")
 
         # The drone frame is already downsampled when loaded
         h, w = drone_frame.shape[:2]
-        print(f"Drone frame dimensions: {w}x{h}")
+        print(f"Computing features for drone frame with dimensions: {w}x{h}")
 
-        # Compute features for the drone frame
-        print("Computing features for drone frame...")
+        #* Compute features for the drone frame
         drone_features = xfeat_model.xfeat_detect_and_compute(drone_frame, top_k=4096)
-        print(f"Detected {drone_features['keypoints'].shape[0]} keypoints in drone frame")
+        
+        #* match against previous frame if available
+        if prev_frame_features is not None:
+            # Match features between the previous frame and the current one
+            mkpts_prev, mkpts_current = xfeat_model.xfeat_match_sparse_default(
+                prev_frame_features,
+                drone_features
+            )
 
-        # Match against all satellite rotations
+            inter_frame_match_count = len(mkpts_prev)
+            print(f"Inter-frame matches: {inter_frame_match_count}")
+
+            #* Compute homography between consecutive frames
+            try:
+                inter_frame_H, _, _ = find_homography(mkpts_prev, mkpts_current)
+                if inter_frame_H is None:
+                    print("⚠️  Inter-frame homography estimation failed")
+            except Exception as e:
+                print(f"⚠️  Exception during inter-frame homography: {e}")
+        
+        #* Match against all satellite rotations
         best_rotation = None
         best_match_count = 0
         best_mkpts_drone = None
         best_mkpts_sat = None
 
-        print("\nMatching against all satellite rotations...")
         for rotation_angle in sorted(sat_features_dict.keys()):
             sat_features = sat_features_dict[rotation_angle]
 
-            # Match features using sparse matching
+            #* Match features using sparse matching
             mkpts_drone, mkpts_sat = xfeat_model.xfeat_match_sparse_default(
                 drone_features,
                 sat_features
@@ -288,7 +326,7 @@ def demo0():
             match_count = len(mkpts_drone)
             print(f"  Rotation {rotation_angle:6.1f}°: {match_count:4d} matches")
 
-            # Update best match if this rotation has more matches
+            #* Update best match if this rotation has more matches
             if match_count > best_match_count:
                 best_match_count = match_count
                 best_rotation = rotation_angle
@@ -301,10 +339,12 @@ def demo0():
 
         print(f"\nBest rotation: {best_rotation}° with {best_match_count} matches")
 
-        # Create visualization with the best match
+        #! update rolling parameters and create visualizations
         if best_rotation is not None and best_mkpts_drone is not None:
-            # Get the original satellite image (0° rotation) for visualization
-            original_sat_img = sat_images_dict[0.0]
+           
+           #TODO here do a clustering accept/reject check 
+           
+            original_sat_img = sat_images_dict[0.0] # Get the original satellite image (0° rotation) for visualization
             sat_h, sat_w = original_sat_img.shape[:2]
             print(f"Using original satellite image (0°): {sat_w}x{sat_h}")
 
@@ -320,13 +360,93 @@ def demo0():
 
             nr_matches = len(best_mkpts_drone)
 
-            # Create the visualization using original satellite image and transformed keypoints
-            viz_canvas = warp_corners_and_draw_matches(
+            #* Compute homography matrix and inlier mask
+            try:
+                H, inlier_mask, _ = find_homography(best_mkpts_drone, best_mkpts_sat_original)
+            except Exception as e:
+                print(f"⚠️⚠️⚠️⚠️  Exception during find_homography: {e}")
+                H = None
+                inlier_mask = None
+
+            if H is None or inlier_mask is None:
+                print("⚠️⚠️⚠️⚠️  Homography estimation failed: skipping this pair.")
+                continue
+
+            inlier_mask = inlier_mask.flatten()
+
+            #* Warp and draw corners on the satellite image
+            result = warp_and_draw_corners(drone_frame, original_sat_img, H)
+            if result is None:
+                print("⚠️⚠️⚠️⚠️  Warping failed: skipping this pair.")
+                continue
+
+            img2_with_corners, warped_corners = result
+
+            #* Check if the warped corners represent a degenerated shape
+            is_degenerated, degeneration_diagnostics = is_shape_degenerated(warped_corners)
+
+            #* update the rolling parameters
+            #TODO while the demo is going, append to a log file the choices on who to trust for best_corners and why
+            # also save the old current_best_H and current_best_corners before updating them, so we can debug later 
+            if is_degenerated == False:
+                print(f"✓ Non-degenerated shape detected")
+                # Initialize best warped corners and homography on first non-degenerated shape
+                if current_best_warped_corners is None:
+                    current_best_warped_corners = warped_corners.copy()
+                    current_best_H = H.copy()
+                    print(f"🧙🧙🧙🧙🧙🧙🧙🧙🧙🧙 Initialized current_best_warped_corners and current_best_H")
+                else:
+                    if inter_frame_H is not None:
+                        #* we have inter-frame estimation
+                        composition_candidate = compute_new_frame_sat_homography(current_best_H, inter_frame_H)
+                        
+                        if composition_candidate is not None:
+                            try:
+                                composition_candidate_warped_corners = warp_corners(drone_frame, composition_candidate)
+                                similarity, _ = compare_warped_shapes(composition_candidate_warped_corners, current_best_warped_corners)
+                            except Exception as e:
+                                print("🔥" * 80)
+                                print(f"🔥🔥🔥  Exception during shape similarity comparison: {e}")
+                                similarity = 0.0
+                                
+                            if similarity >= similarity_threshold: #* inter-frame and feature-matching estimations agree with each other
+                                print(f"🎉🎉🎉🎉🎉🎉 Inter-frame estimation is similar enough (similarity: {similarity:.3f} >= {similarity_threshold}), updating current_best_H")
+                                current_best_H = composition_candidate
+                                current_best_warped_corners = warped_corners.copy()
+                                
+                                if initialization_complete == False:
+                                    initialization_complete = True
+                                    print(f"🎉🎉🎉 Initialization complete! 🎉🎉🎉")
+                            else:
+                                if initialization_complete == False:
+                                    # if we are still initializing, we have no choice but to trust the feature-matching estimation
+                                    current_best_H = H.copy() 
+                                    current_best_warped_corners = warped_corners.copy()
+                        
+            else:
+                #* degenerated shape: our only option is to compose the inter-frame H with the previous best H and assign the result to current_best_H
+                if inter_frame_H is not None and current_best_H is not None:
+                    new_H = compute_new_frame_sat_homography(current_best_H, inter_frame_H)
+                    if new_H is not None:
+                        # Compute new warped corners using the updated homography
+                        new_warped_corners = warp_corners(drone_frame, new_H)
+                        if new_warped_corners is not None:
+                            # Update both H and corners together (as per comment on line 260-261)
+                            current_best_H = new_H
+                            current_best_warped_corners = new_warped_corners
+                            print(f"✓ Updated current_best_H and current_best_warped_corners using inter-frame composition")
+
+            #* Draw the best warped corners if available
+            if current_best_warped_corners is not None:
+                img2_with_corners = draw_corners(img2_with_corners, current_best_warped_corners, color=(255, 0, 0), thickness=2) 
+
+            # Draw match lines on combined image
+            viz_canvas = draw_matches(
+                img1=drone_frame,
+                img2=img2_with_corners,
                 ref_points=best_mkpts_drone,
                 dst_points=best_mkpts_sat_original,  # Use rotated-back keypoints
-                img1=drone_frame,
-                img2=original_sat_img,  # Use original (0°) satellite image
-                draw_match_lines=True,
+                inlier_mask=inlier_mask,
                 thickness=1
             )
 
@@ -336,12 +456,12 @@ def demo0():
                 cv2.imwrite(output_path, viz_canvas)
                 print(f"✓ Saved visualization to: {output_path}")
             else:
-                print("⚠️  Visualization failed (homography estimation failed)")
+                print("⚠️⚠️⚠️⚠️  Visualization failed (homography estimation failed)")
         else:
             print("⚠️  No matches found for this frame")
             
-        prev_frame_drone_features = copy.deepcopy(drone_features) # in the future, only if explicitely desired, ask Claude Code to make this more memory efficient and only copy the numpy arrays
-
+        prev_frame_features = copy.deepcopy(drone_features) # in the future, only if explicitely desired, ask Claude Code to make this more memory efficient and only copy the numpy arrays
+        
     print(f"\n{'='*60}")
     print(f"Demo0 completed! Results saved to: {demo0_output_dir}")
     print(f"{'='*60}")
