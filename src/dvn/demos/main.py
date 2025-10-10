@@ -248,7 +248,12 @@ def demo0():
     print("\nInitializing XFeat model...")
     xfeat_model = XFeatModel(top_k=4096)
 
-    past_drone_features = None
+    #! rolling parameters and initial configuration
+    prev_frame_drone_features = None
+    # initial_rotation_to_try = 
+    current_best_warped_corners_estimate = None
+    #! rolling parameters and initial configuration
+    
     # Process each drone frame (the frames are already downsampled)
     for frame_idx, drone_frame in enumerate(drone_frames):
         print(f"\n{'='*60}")
@@ -335,7 +340,7 @@ def demo0():
         else:
             print("⚠️  No matches found for this frame")
             
-        past_drone_features = copy.deepcopy(drone_features) # in the future, only if explicitely desired, ask Claude Code to make this more memory efficient and only copy the numpy arrays
+        prev_frame_drone_features = copy.deepcopy(drone_features) # in the future, only if explicitely desired, ask Claude Code to make this more memory efficient and only copy the numpy arrays
 
     print(f"\n{'='*60}")
     print(f"Demo0 completed! Results saved to: {demo0_output_dir}")

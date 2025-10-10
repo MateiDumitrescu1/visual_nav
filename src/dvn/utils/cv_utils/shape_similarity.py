@@ -185,6 +185,8 @@ def _compute_min_corner_distance(corners1: np.ndarray, corners2: np.ndarray) -> 
     return min_dist
 
 
+
+
 # ============================================================================
 # TEST FUNCTION
 # ============================================================================
@@ -333,7 +335,6 @@ def test_compare_warped_shapes():
     print("Visualization saved to: shape_similarity_test_results.png")
     print(f"{'=' * 80}\n")
     plt.show()
-
 
 if __name__ == "__main__":
     test_compare_warped_shapes()
