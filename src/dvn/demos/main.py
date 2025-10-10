@@ -373,6 +373,8 @@ def demo0():
     xfeat_model = XFeatModel(top_k=4096)
 
     #! rolling parameters and initial configuration
+    use_trust_fm_cache = True
+    #
     similarity_threshold = 0.7 # if similarity > threshold, we consider the shapes be similar enough
     similarity_threshold_between_fm = 0.7 # if 2 feature matching outputs have similarity > this threshold, we consider them to be similar enough to each other so that we can trust the latest one 
     check_previous_frames_for_between_fm_similarity = 10 # how many previous frames to check for similarity between feature-matching corners
@@ -544,9 +546,9 @@ def demo0():
             #* Check if the warped corners represent a degenerated shape
             is_degenerated, degeneration_diagnostics = is_shape_degenerated(warped_corners)
 
-            #* update the rolling parameters
             #TODO while the demo is going, append to a log file the choices on who to trust for best_corners and why
             # also save the old current_best_H and current_best_corners before updating them, so we can debug later 
+            #! update the rolling parameters
             if is_degenerated == False:
                 print(f"✓ Non-degenerated shape detected")
                 # Initialize best warped corners and homography on first non-degenerated shape
@@ -555,9 +557,20 @@ def demo0():
                     current_best_H = H.copy()
                     print(f"🧙🧙🧙🧙🧙🧙🧙🧙🧙🧙 Initialized current_best_warped_corners and current_best_H")
                 else:
-                    #! Check similarity against previous non-degenerated feature-matching corners
-                    trusted_fm = False
-                    if len(feature_matching_corners_history) > 0:
+                    trusted_fm = False # if we chose to trust FM for this frame, for any reason whatsoever, this becomes True
+                    
+                    #! trust_fm cache value logic
+                    if use_trust_fm_cache:
+                        trust_fm_cache_value = cache_data.get(frame_cache_key, {}).get('trust_fm') if cache_data is not None else None
+                        
+                        if trust_fm_cache_value == 1:
+                            print(f"🐯 trusted_fm was marked as 1 in the cache, we choose to blindly trust FM")
+                            current_best_H = H.copy()
+                            current_best_warped_corners = warped_corners.copy()
+                            trusted_fm = True
+                    
+                    #! previous non-degenerated feature-matching corners logic
+                    if trusted_fm==False and len(feature_matching_corners_history) > 0:
                         # Get the range of previous frames to check
                         # Look back at most check_previous_frames_for_between_fm_similarity frames
                         start_idx = max(0, frame_idx - check_previous_frames_for_between_fm_similarity)
