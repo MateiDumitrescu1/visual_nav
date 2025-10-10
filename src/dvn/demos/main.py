@@ -8,6 +8,7 @@ import os
 import time
 import copy
 import cv2
+import json
 import numpy as np
 from functools import cache
 from paths_ import output_dir, images_dir
@@ -203,6 +204,122 @@ def rotate_keypoints(keypoints: np.ndarray, angle_degrees: float, image_center: 
     return kpts_final
 
 #! ---------------- DEMO PIPELINES ----------------
+cache_path = os.path.join(demo_output_dir, 'demo0', 'cache.json')
+def read_frame_cache():
+    """This file holds cached information, like what sat image rotation was best for each frame. We save it so we don't compute it again."""
+    
+    if not os.path.exists(cache_path):
+        return {}
+    
+    with open(cache_path, 'r') as f:
+        cache_data = json.load(f)
+    return cache_data.get('frames', {})
+
+def write_frame_cache(frame_index: int, best_rotation: float | None = None, trust_fm: int | None = None):
+    """
+    Write or update cache data for a specific frame.
+
+    ### Params:
+        frame_index: int
+            The index of the frame to cache
+        best_rotation: float | None
+            The best satellite image rotation for this frame. If None, don't change this field.
+        trust_fm: int | None
+            Whether to trust feature matching for this frame. Check README.md for details. If None, don't change this field.
+    """
+    cache_data = {}
+    if os.path.exists(cache_path):
+        with open(cache_path, 'r') as f:
+            cache_data = json.load(f)
+    if 'frames' not in cache_data:
+        cache_data['frames'] = {}
+
+    # Get existing frame data or create new entry
+    frame_key = str(frame_index)
+    if frame_key not in cache_data['frames']:
+        cache_data['frames'][frame_key] = {}
+
+    # Update only the fields that are not None
+    if best_rotation is not None:
+        cache_data['frames'][frame_key]['best_rotation'] = best_rotation
+    if trust_fm is not None:
+        cache_data['frames'][frame_key]['trust_fm'] = trust_fm
+
+    with open(cache_path, 'w') as f:
+        json.dump(cache_data, f, indent=4)
+
+def init_cache_from_initial_run(overwrite_existing_rotation: bool = False):
+    """
+    Read the saved images from the initial run dir and populate the cache.json.
+
+    Parses filenames like 'frame_000_rot_255.0.png' to extract frame index and best rotation,
+    then writes each entry to the cache using write_frame_cache.
+
+    ### Params:
+        overwrite_existing_rotation: bool
+            If False (default), frames that already have a cached rotation will be skipped.
+            If True, all frames will be updated with the rotation from the initial run directory.
+    """
+    initial_run_dir = os.path.join(demo_output_dir, 'demo0', 'initial')
+
+    # Check if the initial run directory exists
+    if not os.path.exists(initial_run_dir):
+        print(f"Warning: Initial run directory not found: {initial_run_dir}")
+        return
+
+    # Get all PNG files in the initial directory
+    image_files = [f for f in os.listdir(initial_run_dir)
+                   if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+
+    if not image_files:
+        print(f"Warning: No image files found in {initial_run_dir}")
+        return
+
+    print(f"Found {len(image_files)} images in initial run directory")
+
+    # Read existing cache to check which frames already have cached rotations
+    existing_cache = read_frame_cache()
+
+    # Track statistics for reporting
+    written_count = 0
+    skipped_count = 0
+
+    # Parse each filename to extract frame index and rotation angle
+    for image_file in sorted(image_files):
+        try:
+            # Expected format: frame_XXX_rot_YYY.Y.png
+            # Example: frame_000_rot_255.0.png
+            filename_no_ext = os.path.splitext(image_file)[0]
+            parts = filename_no_ext.split('_')
+
+            # Extract frame index (should be after 'frame_')
+            frame_idx = int(parts[1])
+
+            # Extract rotation angle (should be after 'rot_')
+            # Find the index of 'rot' in parts
+            rot_idx = parts.index('rot')
+            rotation_str = parts[rot_idx + 1]
+            best_rotation = float(rotation_str)
+
+            # Check if frame already has a cached rotation
+            frame_key = str(frame_idx)
+            if not overwrite_existing_rotation and frame_key in existing_cache:
+                existing_rotation = existing_cache[frame_key].get('best_rotation')
+                print(f"  ⊘ Skipped frame {frame_idx}: already cached with rotation {existing_rotation}°")
+                skipped_count += 1
+                continue
+
+            # Write to cache (either new frame or overwrite enabled)
+            write_frame_cache(frame_idx, best_rotation)
+            print(f"  ✓ Cached frame {frame_idx}: rotation {best_rotation}°")
+            written_count += 1
+
+        except (ValueError, IndexError) as e:
+            print(f"  ⚠️  Could not parse filename {image_file}: {e}")
+            continue
+
+    print(f"\n✓ Cache initialization complete: {written_count} written, {skipped_count} skipped")
+
 def demo0():
     """
     Use the frames that are downsampled by 0.6
@@ -211,6 +328,10 @@ def demo0():
     2. pick the one with most matches
     3. save the visualization (with draw_matches) to demo_output_dir / demo0 / current_time
     """
+    # init_cache_from_initial_run()
+    # cache_data = None
+    cache_data = read_frame_cache()
+    
     downsample_factor = 0.6
 
     # Create timestamped output directory for demo0
@@ -279,7 +400,7 @@ def demo0():
         inter_frame_H = None
         
         print(f"\n{'='*60}")
-        print(f"Processing drone frame {frame_idx + 1}/{len(drone_frames)}")
+        print(f"Processing drone frame {frame_idx}/{len(drone_frames)}")
         print(f"{'='*60}")
 
         # The drone frame is already downsampled when loaded
@@ -307,31 +428,62 @@ def demo0():
                     print("⚠️  Inter-frame homography estimation failed")
             except Exception as e:
                 print(f"⚠️  Exception during inter-frame homography: {e}")
-        
-        #* Match against all satellite rotations
+
+        #! rotation check
+        # Check if frame already has a cached best rotation
+        frame_cache_key = str(frame_idx)
+        cached_rotation = None
+        if cache_data is not None and frame_cache_key in cache_data:
+            cached_rotation = cache_data[frame_cache_key].get('best_rotation')
+            # Convert to float to match sat_features_dict keys (JSON may store as int)
+            if cached_rotation is not None:
+                cached_rotation = float(cached_rotation)
+
         best_rotation = None
         best_match_count = 0
         best_mkpts_drone = None
         best_mkpts_sat = None
 
-        for rotation_angle in sorted(sat_features_dict.keys()):
-            sat_features = sat_features_dict[rotation_angle]
+        if cached_rotation is not None:
+            #* Frame has cached rotation - use it directly
+            print(f"📋 Using cached rotation: {cached_rotation}°")
+            best_rotation = cached_rotation
 
-            #* Match features using sparse matching
+            # Match features only with the cached rotation
+            sat_features = sat_features_dict[cached_rotation]
             mkpts_drone, mkpts_sat = xfeat_model.xfeat_match_sparse_default(
                 drone_features,
                 sat_features
             )
+            best_mkpts_drone = mkpts_drone
+            best_mkpts_sat = mkpts_sat
+            best_match_count = len(mkpts_drone)
+            print(f"  Cached rotation {cached_rotation}°: {best_match_count} matches")
+        else:
+            #* No cached rotation - match against all satellite rotations
+            print("🔍 No cached rotation, searching all rotations...")
+            for rotation_angle in sorted(sat_features_dict.keys()):
+                sat_features = sat_features_dict[rotation_angle]
 
-            match_count = len(mkpts_drone)
-            print(f"  Rotation {rotation_angle:6.1f}°: {match_count:4d} matches")
+                #* Match features using sparse matching
+                mkpts_drone, mkpts_sat = xfeat_model.xfeat_match_sparse_default(
+                    drone_features,
+                    sat_features
+                )
 
-            #* Update best match if this rotation has more matches
-            if match_count > best_match_count:
-                best_match_count = match_count
-                best_rotation = rotation_angle
-                best_mkpts_drone = mkpts_drone
-                best_mkpts_sat = mkpts_sat
+                match_count = len(mkpts_drone)
+                print(f"  Rotation {rotation_angle:6.1f}°: {match_count:4d} matches")
+
+                #* Update best match if this rotation has more matches
+                if match_count > best_match_count:
+                    best_match_count = match_count
+                    best_rotation = rotation_angle
+                    best_mkpts_drone = mkpts_drone
+                    best_mkpts_sat = mkpts_sat
+
+            # Cache the newly discovered best rotation for future runs
+            if best_rotation is not None:
+                write_frame_cache(frame_index=frame_idx, best_rotation=best_rotation)
 
         if best_mkpts_sat is None:
             print("No matches found for any rotation, skipping visualization.")
@@ -407,7 +559,7 @@ def demo0():
                                     print("⚠️  Warping with composition_candidate failed, skipping shape similarity check")
                                     similarity = 0.0
                                 else:
-                                    similarity, _ = compare_warped_shapes(composition_candidate_warped_corners, current_best_warped_corners)
+                                    similarity, _ = compare_warped_shapes(composition_candidate_warped_corners, current_best_warped_corners, normalize=False)
                             except Exception as e:
                                 print("🔥" * 80)
                                 print(f"🔥🔥🔥  Exception during shape similarity comparison: {e}")

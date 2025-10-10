@@ -1,0 +1,70 @@
+{
+    "frames": {
+        "0": {
+            "best_rotation": 130.0
+        },
+        "1": {
+            "best_rotation": 5.0
+        },
+        "2": {
+            "best_rotation": 90.0
+        },
+        "3": {
+            "best_rotation": 85.0
+        },
+        "4": {
+            "best_rotation": 85.0
+        },
+        "5": {
+            "best_rotation": 100.0
+        },
+        "6": {
+            "best_rotation": 85.0
+        },
+        "7": {
+            "best_rotation": 95.0
+        },
+        "8": {
+            "best_rotation": 100.0
+        },
+        "9": {
+            "best_rotation": 110.0
+        },
+        "10": {
+            "best_rotation": 100.0
+        },
+        "11": {
+            "best_rotation": 65.0
+        },
+        "12": {
+            "best_rotation": 110.0
+        },
+        "13": {
+            "best_rotation": 220.0
+        },
+        "14": {
+            "best_rotation": 255.0
+        },
+        "15": {
+            "best_rotation": 255.0
+        },
+        "16": {
+            "best_rotation": 65.0
+        },
+        "17": {
+            "best_rotation": 220.0
+        },
+        "18": {
+            "best_rotation": 220.0
+        },
+        "19": {
+            "best_rotation": 220.0
+        },
+        "20": {
+            "best_rotation": 220.0
+        },
+        "21": {
+            "best_rotation": 65.0
+        }
+    }
+}
