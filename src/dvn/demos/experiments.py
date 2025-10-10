@@ -29,15 +29,17 @@ def calibrate_min_cossim() -> None:
     # Initialize the steerer XFeat model
     xfeat_model_steerer = XFeatModel(top_k=4096, model_name=XFEAT_MODELS.STEERER_PRETRAINED)
 
-    # Get the original satellite image features (0° rotation)
-    print("Loading satellite image features...")
-    sat_features = get_original_sat_img_features()
-
     # Load the original satellite image for visualization
     sat_img_path = os.path.join(rotated_sat_dir, "sat_rotated_0.png")
     sat_img = cv2.imread(sat_img_path)
     if sat_img is None:
         raise ValueError(f"Failed to load satellite image at {sat_img_path}")
+
+    # IMPORTANT: Compute satellite features with the STEERER model (not the default model)
+    # The steerer model produces different descriptors than the default model
+    print("Computing satellite image features with STEERER model...")
+    sat_features = xfeat_model_steerer.xfeat_detect_and_compute(sat_img, top_k=4096)
+    print(f"Detected {sat_features['keypoints'].shape[0]} keypoints in satellite image\n")
 
     # Get the first drone frame only
     print("Loading drone frames...")
@@ -78,21 +80,24 @@ def calibrate_min_cossim() -> None:
         print("-" * 80)
 
         # Match against satellite image using steerer sparse matching
-        mkpts_0, mkpts_1, rot = xfeat_model_steerer.xfeat_match_sparse_steerer(
-            drone_features,
+        # Note: sat_features is feat0 (gets rotated), drone_features is feat1 (stays fixed)
+        # This finds which rotation of the satellite image best matches the drone frame
+        mkpts_sat, mkpts_drone, rot = xfeat_model_steerer.xfeat_match_sparse_steerer(
             sat_features,
+            drone_features,
             min_cossim=min_cossim
         )
 
-        num_matches = len(mkpts_0)
+        num_matches = len(mkpts_sat)
         print(f"  Matches: {num_matches} (rotation: {rot})")
 
         # Visualize and save the matches
+        # mkpts_drone are from drone_frame (img1), mkpts_sat are from sat_img (img2)
         output_canvas = draw_matches(
             img1=drone_frame,
             img2=sat_img,
-            ref_points=mkpts_0,
-            dst_points=mkpts_1,
+            ref_points=mkpts_drone,
+            dst_points=mkpts_sat,
             inlier_mask=None,  # Draw all matches
             colors=None,  # Use default green color
             thickness=1
