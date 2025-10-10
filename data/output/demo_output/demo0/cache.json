@@ -116,6 +116,1155 @@
         },
         "38": {
             "best_rotation": 25.0
+        },
+        "39": {
+            "best_rotation": 215.0
+        },
+        "40": {
+            "best_rotation": 220.0
+        },
+        "41": {
+            "best_rotation": 130.0
+        },
+        "42": {
+            "best_rotation": 75.0
+        },
+        "43": {
+            "best_rotation": 185.0
+        },
+        "44": {
+            "best_rotation": 20.0
+        },
+        "45": {
+            "best_rotation": 310.0
+        },
+        "46": {
+            "best_rotation": 285.0
+        },
+        "47": {
+            "best_rotation": 90.0
+        },
+        "48": {
+            "best_rotation": 90.0
+        },
+        "49": {
+            "best_rotation": 60.0
+        },
+        "50": {
+            "best_rotation": 20.0
+        },
+        "51": {
+            "best_rotation": 245.0
+        },
+        "52": {
+            "best_rotation": 225.0
+        },
+        "53": {
+            "best_rotation": 40.0
+        },
+        "54": {
+            "best_rotation": 265.0
+        },
+        "55": {
+            "best_rotation": 255.0
+        },
+        "56": {
+            "best_rotation": 310.0
+        },
+        "57": {
+            "best_rotation": 185.0
+        },
+        "58": {
+            "best_rotation": 20.0
+        },
+        "59": {
+            "best_rotation": 115.0
+        },
+        "60": {
+            "best_rotation": 255.0
+        },
+        "61": {
+            "best_rotation": 215.0
+        },
+        "62": {
+            "best_rotation": 320.0
+        },
+        "63": {
+            "best_rotation": 15.0
+        },
+        "64": {
+            "best_rotation": 280.0
+        },
+        "65": {
+            "best_rotation": 275.0
+        },
+        "66": {
+            "best_rotation": 5.0
+        },
+        "67": {
+            "best_rotation": 250.0
+        },
+        "68": {
+            "best_rotation": 245.0
+        },
+        "69": {
+            "best_rotation": 245.0
+        },
+        "70": {
+            "best_rotation": 285.0
+        },
+        "71": {
+            "best_rotation": 235.0
+        },
+        "72": {
+            "best_rotation": 55.0
+        },
+        "73": {
+            "best_rotation": 245.0
+        },
+        "74": {
+            "best_rotation": 245.0
+        },
+        "75": {
+            "best_rotation": 245.0
+        },
+        "76": {
+            "best_rotation": 330.0
+        },
+        "77": {
+            "best_rotation": 330.0
+        },
+        "78": {
+            "best_rotation": 330.0
+        },
+        "79": {
+            "best_rotation": 330.0
+        },
+        "80": {
+            "best_rotation": 330.0
+        },
+        "81": {
+            "best_rotation": 225.0
+        },
+        "82": {
+            "best_rotation": 30.0
+        },
+        "83": {
+            "best_rotation": 25.0
+        },
+        "84": {
+            "best_rotation": 210.0
+        },
+        "85": {
+            "best_rotation": 25.0
+        },
+        "86": {
+            "best_rotation": 125.0
+        },
+        "87": {
+            "best_rotation": 30.0
+        },
+        "88": {
+            "best_rotation": 35.0
+        },
+        "89": {
+            "best_rotation": 75.0
+        },
+        "90": {
+            "best_rotation": 325.0
+        },
+        "91": {
+            "best_rotation": 0.0
+        },
+        "92": {
+            "best_rotation": 0.0
+        },
+        "93": {
+            "best_rotation": 0.0
+        },
+        "94": {
+            "best_rotation": 10.0
+        },
+        "95": {
+            "best_rotation": 355.0
+        },
+        "96": {
+            "best_rotation": 20.0
+        },
+        "97": {
+            "best_rotation": 20.0
+        },
+        "98": {
+            "best_rotation": 20.0
+        },
+        "99": {
+            "best_rotation": 20.0
+        },
+        "100": {
+            "best_rotation": 10.0
+        },
+        "101": {
+            "best_rotation": 100.0
+        },
+        "102": {
+            "best_rotation": 55.0
+        },
+        "103": {
+            "best_rotation": 100.0
+        },
+        "104": {
+            "best_rotation": 110.0
+        },
+        "105": {
+            "best_rotation": 100.0
+        },
+        "106": {
+            "best_rotation": 100.0
+        },
+        "107": {
+            "best_rotation": 75.0
+        },
+        "108": {
+            "best_rotation": 110.0
+        },
+        "109": {
+            "best_rotation": 85.0
+        },
+        "110": {
+            "best_rotation": 110.0
+        },
+        "111": {
+            "best_rotation": 85.0
+        },
+        "112": {
+            "best_rotation": 100.0
+        },
+        "113": {
+            "best_rotation": 115.0
+        },
+        "114": {
+            "best_rotation": 100.0
+        },
+        "115": {
+            "best_rotation": 110.0
+        },
+        "116": {
+            "best_rotation": 110.0
+        },
+        "117": {
+            "best_rotation": 110.0
+        },
+        "118": {
+            "best_rotation": 110.0
+        },
+        "119": {
+            "best_rotation": 110.0
+        },
+        "120": {
+            "best_rotation": 105.0
+        },
+        "121": {
+            "best_rotation": 180.0
+        },
+        "122": {
+            "best_rotation": 145.0
+        },
+        "123": {
+            "best_rotation": 150.0
+        },
+        "124": {
+            "best_rotation": 155.0
+        },
+        "125": {
+            "best_rotation": 155.0
+        },
+        "126": {
+            "best_rotation": 190.0
+        },
+        "127": {
+            "best_rotation": 155.0
+        },
+        "128": {
+            "best_rotation": 155.0
+        },
+        "129": {
+            "best_rotation": 155.0
+        },
+        "130": {
+            "best_rotation": 160.0
+        },
+        "131": {
+            "best_rotation": 160.0
+        },
+        "132": {
+            "best_rotation": 155.0
+        },
+        "133": {
+            "best_rotation": 140.0
+        },
+        "134": {
+            "best_rotation": 155.0
+        },
+        "135": {
+            "best_rotation": 160.0
+        },
+        "136": {
+            "best_rotation": 335.0
+        },
+        "137": {
+            "best_rotation": 165.0
+        },
+        "138": {
+            "best_rotation": 335.0
+        },
+        "139": {
+            "best_rotation": 160.0
+        },
+        "140": {
+            "best_rotation": 330.0
+        },
+        "141": {
+            "best_rotation": 140.0
+        },
+        "142": {
+            "best_rotation": 140.0
+        },
+        "143": {
+            "best_rotation": 130.0
+        },
+        "144": {
+            "best_rotation": 125.0
+        },
+        "145": {
+            "best_rotation": 150.0
+        },
+        "146": {
+            "best_rotation": 125.0
+        },
+        "147": {
+            "best_rotation": 125.0
+        },
+        "148": {
+            "best_rotation": 125.0
+        },
+        "149": {
+            "best_rotation": 125.0
+        },
+        "150": {
+            "best_rotation": 125.0
+        },
+        "151": {
+            "best_rotation": 110.0
+        },
+        "152": {
+            "best_rotation": 70.0
+        },
+        "153": {
+            "best_rotation": 70.0
+        },
+        "154": {
+            "best_rotation": 65.0
+        },
+        "155": {
+            "best_rotation": 255.0
+        },
+        "156": {
+            "best_rotation": 65.0
+        },
+        "157": {
+            "best_rotation": 65.0
+        },
+        "158": {
+            "best_rotation": 65.0
+        },
+        "159": {
+            "best_rotation": 180.0
+        },
+        "160": {
+            "best_rotation": 245.0
+        },
+        "161": {
+            "best_rotation": 40.0
+        },
+        "162": {
+            "best_rotation": 40.0
+        },
+        "163": {
+            "best_rotation": 40.0
+        },
+        "164": {
+            "best_rotation": 20.0
+        },
+        "165": {
+            "best_rotation": 20.0
+        },
+        "166": {
+            "best_rotation": 85.0
+        },
+        "167": {
+            "best_rotation": 80.0
+        },
+        "168": {
+            "best_rotation": 335.0
+        },
+        "169": {
+            "best_rotation": 335.0
+        },
+        "170": {
+            "best_rotation": 345.0
+        },
+        "171": {
+            "best_rotation": 325.0
+        },
+        "172": {
+            "best_rotation": 315.0
+        },
+        "173": {
+            "best_rotation": 335.0
+        },
+        "174": {
+            "best_rotation": 305.0
+        },
+        "175": {
+            "best_rotation": 315.0
+        },
+        "176": {
+            "best_rotation": 315.0
+        },
+        "177": {
+            "best_rotation": 335.0
+        },
+        "178": {
+            "best_rotation": 315.0
+        },
+        "179": {
+            "best_rotation": 240.0
+        },
+        "180": {
+            "best_rotation": 330.0
+        },
+        "181": {
+            "best_rotation": 315.0
+        },
+        "182": {
+            "best_rotation": 335.0
+        },
+        "183": {
+            "best_rotation": 335.0
+        },
+        "184": {
+            "best_rotation": 315.0
+        },
+        "185": {
+            "best_rotation": 125.0
+        },
+        "186": {
+            "best_rotation": 125.0
+        },
+        "187": {
+            "best_rotation": 190.0
+        },
+        "188": {
+            "best_rotation": 335.0
+        },
+        "189": {
+            "best_rotation": 250.0
+        },
+        "190": {
+            "best_rotation": 335.0
+        },
+        "191": {
+            "best_rotation": 335.0
+        },
+        "192": {
+            "best_rotation": 330.0
+        },
+        "193": {
+            "best_rotation": 335.0
+        },
+        "194": {
+            "best_rotation": 170.0
+        },
+        "195": {
+            "best_rotation": 335.0
+        },
+        "196": {
+            "best_rotation": 335.0
+        },
+        "197": {
+            "best_rotation": 330.0
+        },
+        "198": {
+            "best_rotation": 345.0
+        },
+        "199": {
+            "best_rotation": 20.0
+        },
+        "200": {
+            "best_rotation": 20.0
+        },
+        "201": {
+            "best_rotation": 20.0
+        },
+        "202": {
+            "best_rotation": 20.0
+        },
+        "203": {
+            "best_rotation": 70.0
+        },
+        "204": {
+            "best_rotation": 65.0
+        },
+        "205": {
+            "best_rotation": 70.0
+        },
+        "206": {
+            "best_rotation": 65.0
+        },
+        "207": {
+            "best_rotation": 65.0
+        },
+        "208": {
+            "best_rotation": 110.0
+        },
+        "209": {
+            "best_rotation": 100.0
+        },
+        "210": {
+            "best_rotation": 110.0
+        },
+        "211": {
+            "best_rotation": 110.0
+        },
+        "212": {
+            "best_rotation": 110.0
+        },
+        "213": {
+            "best_rotation": 110.0
+        },
+        "214": {
+            "best_rotation": 110.0
+        },
+        "215": {
+            "best_rotation": 110.0
+        },
+        "216": {
+            "best_rotation": 110.0
+        },
+        "217": {
+            "best_rotation": 110.0
+        },
+        "218": {
+            "best_rotation": 110.0
+        },
+        "219": {
+            "best_rotation": 110.0
+        },
+        "220": {
+            "best_rotation": 110.0
+        },
+        "221": {
+            "best_rotation": 110.0
+        },
+        "222": {
+            "best_rotation": 110.0
+        },
+        "223": {
+            "best_rotation": 110.0
+        },
+        "224": {
+            "best_rotation": 110.0
+        },
+        "225": {
+            "best_rotation": 110.0
+        },
+        "226": {
+            "best_rotation": 200.0
+        },
+        "227": {
+            "best_rotation": 80.0
+        },
+        "228": {
+            "best_rotation": 205.0
+        },
+        "229": {
+            "best_rotation": 195.0
+        },
+        "230": {
+            "best_rotation": 200.0
+        },
+        "231": {
+            "best_rotation": 115.0
+        },
+        "232": {
+            "best_rotation": 100.0
+        },
+        "233": {
+            "best_rotation": 125.0
+        },
+        "234": {
+            "best_rotation": 100.0
+        },
+        "235": {
+            "best_rotation": 125.0
+        },
+        "236": {
+            "best_rotation": 110.0
+        },
+        "237": {
+            "best_rotation": 110.0
+        },
+        "238": {
+            "best_rotation": 290.0
+        },
+        "239": {
+            "best_rotation": 290.0
+        },
+        "240": {
+            "best_rotation": 125.0
+        },
+        "241": {
+            "best_rotation": 290.0
+        },
+        "242": {
+            "best_rotation": 200.0
+        },
+        "243": {
+            "best_rotation": 125.0
+        },
+        "244": {
+            "best_rotation": 125.0
+        },
+        "245": {
+            "best_rotation": 125.0
+        },
+        "246": {
+            "best_rotation": 125.0
+        },
+        "247": {
+            "best_rotation": 125.0
+        },
+        "248": {
+            "best_rotation": 110.0
+        },
+        "249": {
+            "best_rotation": 80.0
+        },
+        "250": {
+            "best_rotation": 100.0
+        },
+        "251": {
+            "best_rotation": 80.0
+        },
+        "252": {
+            "best_rotation": 95.0
+        },
+        "253": {
+            "best_rotation": 10.0
+        },
+        "254": {
+            "best_rotation": 170.0
+        },
+        "255": {
+            "best_rotation": 105.0
+        },
+        "256": {
+            "best_rotation": 120.0
+        },
+        "257": {
+            "best_rotation": 160.0
+        },
+        "258": {
+            "best_rotation": 85.0
+        },
+        "259": {
+            "best_rotation": 305.0
+        },
+        "260": {
+            "best_rotation": 30.0
+        },
+        "261": {
+            "best_rotation": 30.0
+        },
+        "262": {
+            "best_rotation": 155.0
+        },
+        "263": {
+            "best_rotation": 35.0
+        },
+        "264": {
+            "best_rotation": 345.0
+        },
+        "265": {
+            "best_rotation": 205.0
+        },
+        "266": {
+            "best_rotation": 20.0
+        },
+        "267": {
+            "best_rotation": 5.0
+        },
+        "268": {
+            "best_rotation": 295.0
+        },
+        "269": {
+            "best_rotation": 5.0
+        },
+        "270": {
+            "best_rotation": 170.0
+        },
+        "271": {
+            "best_rotation": 350.0
+        },
+        "272": {
+            "best_rotation": 170.0
+        },
+        "273": {
+            "best_rotation": 330.0
+        },
+        "274": {
+            "best_rotation": 335.0
+        },
+        "275": {
+            "best_rotation": 335.0
+        },
+        "276": {
+            "best_rotation": 335.0
+        },
+        "277": {
+            "best_rotation": 350.0
+        },
+        "278": {
+            "best_rotation": 335.0
+        },
+        "279": {
+            "best_rotation": 330.0
+        },
+        "280": {
+            "best_rotation": 350.0
+        },
+        "281": {
+            "best_rotation": 335.0
+        },
+        "282": {
+            "best_rotation": 335.0
+        },
+        "283": {
+            "best_rotation": 335.0
+        },
+        "284": {
+            "best_rotation": 350.0
+        },
+        "285": {
+            "best_rotation": 350.0
+        },
+        "286": {
+            "best_rotation": 205.0
+        },
+        "287": {
+            "best_rotation": 195.0
+        },
+        "288": {
+            "best_rotation": 330.0
+        },
+        "289": {
+            "best_rotation": 170.0
+        },
+        "290": {
+            "best_rotation": 170.0
+        },
+        "291": {
+            "best_rotation": 135.0
+        },
+        "292": {
+            "best_rotation": 335.0
+        },
+        "293": {
+            "best_rotation": 115.0
+        },
+        "294": {
+            "best_rotation": 135.0
+        },
+        "295": {
+            "best_rotation": 120.0
+        },
+        "296": {
+            "best_rotation": 130.0
+        },
+        "297": {
+            "best_rotation": 125.0
+        },
+        "298": {
+            "best_rotation": 220.0
+        },
+        "299": {
+            "best_rotation": 195.0
+        },
+        "300": {
+            "best_rotation": 325.0
+        },
+        "301": {
+            "best_rotation": 215.0
+        },
+        "302": {
+            "best_rotation": 200.0
+        },
+        "303": {
+            "best_rotation": 260.0
+        },
+        "304": {
+            "best_rotation": 205.0
+        },
+        "305": {
+            "best_rotation": 300.0
+        },
+        "306": {
+            "best_rotation": 290.0
+        },
+        "307": {
+            "best_rotation": 295.0
+        },
+        "308": {
+            "best_rotation": 280.0
+        },
+        "309": {
+            "best_rotation": 275.0
+        },
+        "310": {
+            "best_rotation": 0.0
+        },
+        "311": {
+            "best_rotation": 290.0
+        },
+        "312": {
+            "best_rotation": 290.0
+        },
+        "313": {
+            "best_rotation": 290.0
+        },
+        "314": {
+            "best_rotation": 300.0
+        },
+        "315": {
+            "best_rotation": 290.0
+        },
+        "316": {
+            "best_rotation": 350.0
+        },
+        "317": {
+            "best_rotation": 355.0
+        },
+        "318": {
+            "best_rotation": 350.0
+        },
+        "319": {
+            "best_rotation": 350.0
+        },
+        "320": {
+            "best_rotation": 350.0
+        },
+        "321": {
+            "best_rotation": 340.0
+        },
+        "322": {
+            "best_rotation": 10.0
+        },
+        "323": {
+            "best_rotation": 340.0
+        },
+        "324": {
+            "best_rotation": 20.0
+        },
+        "325": {
+            "best_rotation": 20.0
+        },
+        "326": {
+            "best_rotation": 20.0
+        },
+        "327": {
+            "best_rotation": 350.0
+        },
+        "328": {
+            "best_rotation": 350.0
+        },
+        "329": {
+            "best_rotation": 20.0
+        },
+        "330": {
+            "best_rotation": 30.0
+        },
+        "331": {
+            "best_rotation": 30.0
+        },
+        "332": {
+            "best_rotation": 205.0
+        },
+        "333": {
+            "best_rotation": 215.0
+        },
+        "334": {
+            "best_rotation": 215.0
+        },
+        "335": {
+            "best_rotation": 210.0
+        },
+        "336": {
+            "best_rotation": 220.0
+        },
+        "337": {
+            "best_rotation": 210.0
+        },
+        "338": {
+            "best_rotation": 240.0
+        },
+        "339": {
+            "best_rotation": 225.0
+        },
+        "340": {
+            "best_rotation": 220.0
+        },
+        "341": {
+            "best_rotation": 220.0
+        },
+        "342": {
+            "best_rotation": 210.0
+        },
+        "343": {
+            "best_rotation": 25.0
+        },
+        "344": {
+            "best_rotation": 65.0
+        },
+        "345": {
+            "best_rotation": 30.0
+        },
+        "346": {
+            "best_rotation": 30.0
+        },
+        "347": {
+            "best_rotation": 30.0
+        },
+        "348": {
+            "best_rotation": 210.0
+        },
+        "349": {
+            "best_rotation": 210.0
+        },
+        "350": {
+            "best_rotation": 210.0
+        },
+        "351": {
+            "best_rotation": 210.0
+        },
+        "352": {
+            "best_rotation": 210.0
+        },
+        "353": {
+            "best_rotation": 45.0
+        },
+        "354": {
+            "best_rotation": 230.0
+        },
+        "355": {
+            "best_rotation": 30.0
+        },
+        "356": {
+            "best_rotation": 220.0
+        },
+        "357": {
+            "best_rotation": 190.0
+        },
+        "358": {
+            "best_rotation": 30.0
+        },
+        "359": {
+            "best_rotation": 210.0
+        },
+        "360": {
+            "best_rotation": 230.0
+        },
+        "361": {
+            "best_rotation": 210.0
+        },
+        "362": {
+            "best_rotation": 210.0
+        },
+        "363": {
+            "best_rotation": 210.0
+        },
+        "364": {
+            "best_rotation": 210.0
+        },
+        "365": {
+            "best_rotation": 225.0
+        },
+        "366": {
+            "best_rotation": 210.0
+        },
+        "367": {
+            "best_rotation": 210.0
+        },
+        "368": {
+            "best_rotation": 45.0
+        },
+        "369": {
+            "best_rotation": 210.0
+        },
+        "370": {
+            "best_rotation": 205.0
+        },
+        "371": {
+            "best_rotation": 205.0
+        },
+        "372": {
+            "best_rotation": 200.0
+        },
+        "373": {
+            "best_rotation": 25.0
+        },
+        "374": {
+            "best_rotation": 25.0
+        },
+        "375": {
+            "best_rotation": 15.0
+        },
+        "376": {
+            "best_rotation": 10.0
+        },
+        "377": {
+            "best_rotation": 350.0
+        },
+        "378": {
+            "best_rotation": 5.0
+        },
+        "379": {
+            "best_rotation": 340.0
+        },
+        "380": {
+            "best_rotation": 350.0
+        },
+        "381": {
+            "best_rotation": 340.0
+        },
+        "382": {
+            "best_rotation": 350.0
+        },
+        "383": {
+            "best_rotation": 340.0
+        },
+        "384": {
+            "best_rotation": 340.0
+        },
+        "385": {
+            "best_rotation": 340.0
+        },
+        "386": {
+            "best_rotation": 340.0
+        },
+        "387": {
+            "best_rotation": 330.0
+        },
+        "388": {
+            "best_rotation": 340.0
+        },
+        "389": {
+            "best_rotation": 325.0
+        },
+        "390": {
+            "best_rotation": 295.0
+        },
+        "391": {
+            "best_rotation": 295.0
+        },
+        "392": {
+            "best_rotation": 295.0
+        },
+        "393": {
+            "best_rotation": 270.0
+        },
+        "394": {
+            "best_rotation": 280.0
+        },
+        "395": {
+            "best_rotation": 260.0
+        },
+        "396": {
+            "best_rotation": 270.0
+        },
+        "397": {
+            "best_rotation": 280.0
+        },
+        "398": {
+            "best_rotation": 280.0
+        },
+        "399": {
+            "best_rotation": 280.0
+        },
+        "400": {
+            "best_rotation": 270.0
+        },
+        "401": {
+            "best_rotation": 270.0
+        },
+        "402": {
+            "best_rotation": 270.0
+        },
+        "403": {
+            "best_rotation": 280.0
+        },
+        "404": {
+            "best_rotation": 270.0
+        },
+        "405": {
+            "best_rotation": 280.0
+        },
+        "406": {
+            "best_rotation": 280.0
+        },
+        "407": {
+            "best_rotation": 280.0
+        },
+        "408": {
+            "best_rotation": 260.0
+        },
+        "409": {
+            "best_rotation": 260.0
+        },
+        "410": {
+            "best_rotation": 280.0
+        },
+        "411": {
+            "best_rotation": 260.0
+        },
+        "412": {
+            "best_rotation": 260.0
+        },
+        "413": {
+            "best_rotation": 260.0
+        },
+        "414": {
+            "best_rotation": 260.0
+        },
+        "415": {
+            "best_rotation": 260.0
+        },
+        "416": {
+            "best_rotation": 260.0
+        },
+        "417": {
+            "best_rotation": 265.0
+        },
+        "418": {
+            "best_rotation": 275.0
+        },
+        "419": {
+            "best_rotation": 260.0
+        },
+        "420": {
+            "best_rotation": 280.0
+        },
+        "421": {
+            "best_rotation": 260.0
         }
     }
 }

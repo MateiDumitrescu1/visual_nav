@@ -377,6 +377,7 @@ def demo0():
     initialization_complete = False # when the inter-frame estimation and the feature matching estimation both give similar enough results, we can consider the initialization complete
     #
     prev_frame_features = None
+    last_non_degenerated_feature_matching_corners = None # the last non-degenerated corners we got from feature-matching estimation
     # initial_rotation_to_try = 
     #* these 2 should always be updated together
     #TODO remove the `current_best_warped_corners` parameter since it can always be inferred from the `current_best_H` parameter
@@ -548,7 +549,27 @@ def demo0():
                     current_best_H = H.copy()
                     print(f"🧙🧙🧙🧙🧙🧙🧙🧙🧙🧙 Initialized current_best_warped_corners and current_best_H")
                 else:
-                    if inter_frame_H is not None:
+                    #* last non-deg feature-matching corners logic
+                    trusted_fm = False
+                    if last_non_degenerated_feature_matching_corners is not None:
+                        # we have a previous non-degenerated feature-matching corners
+                        # check how similar the current feature-matching corners are to the last non-degenerated ones
+                        try:
+                            similarity_to_last = compute_shape_similarity(warped_corners, last_non_degenerated_feature_matching_corners)
+                        except Exception as e:
+                            similarity_to_last = 0.0
+                            
+                        print(f"💧Similarity of current feature-matching corners to last non-degenerated ones: {similarity_to_last:.3f}")
+                        
+                        if similarity_to_last >= 0.75:
+                            # last 2 feature-matching corners are similar enough -> we can trust the current feature-matching estimation
+                            trusted_fm = True
+                            print(f"🐝 Current feature-matching corners are similar enough to last non-degenerated ones (similarity: {similarity_to_last:.3f} >= 0.75), updating current_best_H")
+                            current_best_H = H.copy()
+                            current_best_warped_corners = warped_corners.copy()
+                    
+                    #* inter-frame agreement logic
+                    if trusted_fm == False and inter_frame_H is not None:
                         #* we have inter-frame estimation
                         composition_candidate = compute_new_frame_sat_homography(current_best_H, inter_frame_H)
                         
@@ -587,6 +608,8 @@ def demo0():
                                     print(f"🐶 Inter-frame estimation disagrees (similarity: {similarity:.3f} < {similarity_threshold}), trusting inter-frame update")
                                     current_best_H = composition_candidate
                                     current_best_warped_corners = composition_candidate_warped_corners
+                                    
+                last_non_degenerated_feature_matching_corners = warped_corners.copy()
                         
             else:
                 #* degenerated shape: our only option is to compose the inter-frame H with the previous best H and assign the result to current_best_H
