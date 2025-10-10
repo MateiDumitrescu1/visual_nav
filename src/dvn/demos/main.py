@@ -403,25 +403,36 @@ def demo0():
                         if composition_candidate is not None:
                             try:
                                 composition_candidate_warped_corners = warp_corners(drone_frame, composition_candidate)
-                                similarity, _ = compare_warped_shapes(composition_candidate_warped_corners, current_best_warped_corners)
+                                if composition_candidate_warped_corners is None:
+                                    print("⚠️  Warping with composition_candidate failed, skipping shape similarity check")
+                                    similarity = 0.0
+                                else:
+                                    similarity, _ = compare_warped_shapes(composition_candidate_warped_corners, current_best_warped_corners)
                             except Exception as e:
                                 print("🔥" * 80)
                                 print(f"🔥🔥🔥  Exception during shape similarity comparison: {e}")
                                 similarity = 0.0
                                 
                             if similarity >= similarity_threshold: #* inter-frame and feature-matching estimations agree with each other
+                                #* they agree -> trust the feature matching
                                 print(f"🎉🎉🎉🎉🎉🎉 Inter-frame estimation is similar enough (similarity: {similarity:.3f} >= {similarity_threshold}), updating current_best_H")
-                                current_best_H = composition_candidate
+                                current_best_H = H.copy()
                                 current_best_warped_corners = warped_corners.copy()
                                 
                                 if initialization_complete == False:
                                     initialization_complete = True
                                     print(f"🎉🎉🎉 Initialization complete! 🎉🎉🎉")
                             else:
+                                #* they disagree
                                 if initialization_complete == False:
                                     # if we are still initializing, we have no choice but to trust the feature-matching estimation
                                     current_best_H = H.copy() 
                                     current_best_warped_corners = warped_corners.copy()
+                                else:
+                                    # if we are already initialized, we trust the inter-frame estimation
+                                    print(f"⚠️⚠️⚠️ Inter-frame estimation disagrees (similarity: {similarity:.3f} < {similarity_threshold}), trusting inter-frame update")
+                                    current_best_H = composition_candidate
+                                    current_best_warped_corners = composition_candidate_warped_corners
                         
             else:
                 #* degenerated shape: our only option is to compose the inter-frame H with the previous best H and assign the result to current_best_H

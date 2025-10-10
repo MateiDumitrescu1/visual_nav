@@ -8,7 +8,7 @@ from typing import Tuple
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 
-
+#TODO is the shape similarity broken ? it's assigning high similarity to some weird stuff
 def compare_warped_shapes(
     warped_corners1: np.ndarray,
     warped_corners2: np.ndarray,
