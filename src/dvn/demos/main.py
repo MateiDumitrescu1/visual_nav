@@ -6,6 +6,7 @@
 from typing import Dict
 import os
 import time
+import copy
 import cv2
 import numpy as np
 from functools import cache
@@ -139,14 +140,14 @@ def get_drone_frames(downsample_factor: float = 1.0) -> list[np.ndarray]:
     Read all images from drone_frames_dir/ the appropriate downsampled folder.
     """
     drone_frames_dir_to_read = None
-    if downsample_factor == 1.0: 
+    if downsample_factor == 1.0:
         drone_frames_dir_to_read = drone_frames_dir + '/original'
     else:
         folder_name = f"downsampled_{str(downsample_factor).replace('.', '_')}"
         drone_frames_dir_to_read = os.path.join(drone_frames_dir, folder_name)
         if not os.path.exists(drone_frames_dir_to_read):
             raise FileNotFoundError(f"Downsampled frames folder not found: {drone_frames_dir_to_read}")
-    
+
     drone_frames = []
     for image_file in os.listdir(drone_frames_dir_to_read):
         if image_file.lower().endswith(('.png', '.jpg', '.jpeg')):
@@ -157,6 +158,46 @@ def get_drone_frames(downsample_factor: float = 1.0) -> list[np.ndarray]:
             else:
                 raise ValueError(f"Failed to read image: {image_path}")
     return drone_frames
+
+def rotate_keypoints(keypoints: np.ndarray, angle_degrees: float, image_center: tuple[float, float]) -> np.ndarray:
+    """
+    Rotate keypoints around an image center by a given angle.
+
+    This is useful for transforming keypoints from a rotated image back to the original orientation.
+
+    ### Params:
+        keypoints: np.ndarray
+            nx2 array of (x, y) coordinates
+        angle_degrees: float
+            Rotation angle in degrees (positive = counterclockwise, negative = clockwise)
+        image_center: tuple[float, float]
+            (cx, cy) center point of rotation
+
+    ### Returns:
+        np.ndarray: Rotated keypoints (nx2 array)
+    """
+    # Convert angle to radians
+    angle_rad = np.deg2rad(angle_degrees)
+
+    # Create 2D rotation matrix
+    cos_a = np.cos(angle_rad)
+    sin_a = np.sin(angle_rad)
+    rotation_matrix = np.array([
+        [cos_a, -sin_a],
+        [sin_a, cos_a]
+    ])
+
+    # Translate keypoints to origin (center of rotation)
+    cx, cy = image_center
+    kpts_centered = keypoints - np.array([cx, cy])
+
+    # Apply rotation transformation
+    kpts_rotated = kpts_centered @ rotation_matrix.T
+
+    # Translate back to original coordinate system
+    kpts_final = kpts_rotated + np.array([cx, cy])
+
+    return kpts_final
 
 #! ---------------- DEMO PIPELINES ----------------
 def demo0():
@@ -207,6 +248,7 @@ def demo0():
     print("\nInitializing XFeat model...")
     xfeat_model = XFeatModel(top_k=4096)
 
+    past_drone_features = None
     # Process each drone frame (the frames are already downsampled)
     for frame_idx, drone_frame in enumerate(drone_frames):
         print(f"\n{'='*60}")
@@ -256,21 +298,29 @@ def demo0():
 
         # Create visualization with the best match
         if best_rotation is not None and best_mkpts_drone is not None:
-            
-            print("Creating visualization...")
-            sat_img = sat_images_dict[best_rotation]
+            # Get the original satellite image (0° rotation) for visualization
+            original_sat_img = sat_images_dict[0.0]
+            sat_h, sat_w = original_sat_img.shape[:2]
+            print(f"Using original satellite image (0°): {sat_w}x{sat_h}")
 
-            sat_h, sat_w = sat_img.shape[:2]
-            print(f"Using satellite image (rotation {best_rotation}°): {sat_w}x{sat_h}")
+            # Rotate the matched satellite keypoints back to original orientation
+            # If best match was at +θ degrees, we need to rotate back by -θ degrees
+            sat_center = (sat_w / 2.0, sat_h / 2.0)
+            best_mkpts_sat_original = rotate_keypoints(
+                best_mkpts_sat,
+                -best_rotation,  # Negative angle for reverse rotation
+                sat_center
+            )
+            print(f"Rotated {len(best_mkpts_sat)} keypoints back by {-best_rotation}° to match original satellite image")
 
             nr_matches = len(best_mkpts_drone)
-            
-            # Create the visualization
+
+            # Create the visualization using original satellite image and transformed keypoints
             viz_canvas = warp_corners_and_draw_matches(
                 ref_points=best_mkpts_drone,
-                dst_points=best_mkpts_sat,
+                dst_points=best_mkpts_sat_original,  # Use rotated-back keypoints
                 img1=drone_frame,
-                img2=sat_img,  # Use full-size satellite image
+                img2=original_sat_img,  # Use original (0°) satellite image
                 draw_match_lines=True,
                 thickness=1
             )
@@ -284,6 +334,8 @@ def demo0():
                 print("⚠️  Visualization failed (homography estimation failed)")
         else:
             print("⚠️  No matches found for this frame")
+            
+        past_drone_features = copy.deepcopy(drone_features) # in the future, only if explicitely desired, ask Claude Code to make this more memory efficient and only copy the numpy arrays
 
     print(f"\n{'='*60}")
     print(f"Demo0 completed! Results saved to: {demo0_output_dir}")
