@@ -165,7 +165,8 @@ def compile_demo_video():
     """
     # time = "2025-10-10_12-40-57"
     # 2025-10-10_12-40-57
-    time = "2025-10-10_13-18-00"
+    # time = "2025-10-10_13-18-00"
+    time = "2025-10-10_13-49-10"
     # images_folder: str = output_dir + "/demo_output" + "/demo0" + "/2025-10-10_11-02-23"
     images_folder: str = output_dir + "/demo_output" + "/demo0" + f"/{time}"
 
