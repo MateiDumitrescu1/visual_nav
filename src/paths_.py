@@ -27,6 +27,9 @@ check_dir_exists(models_dir)
 output_dir = os.path.abspath(os.path.join(data_dir, 'output'))
 check_dir_exists(output_dir)
 
+demo_output_dir = os.path.abspath(os.path.join(output_dir, 'demo_output'))
+check_dir_exists(demo_output_dir)
+
 #! test image sets dir
 test_image_sets_dir = os.path.abspath(os.path.join(images_dir, 'test_image_sets'))
 check_dir_exists(test_image_sets_dir)

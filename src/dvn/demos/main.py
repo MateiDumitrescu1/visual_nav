@@ -4,24 +4,22 @@
 
 #TODO estimate rotation with optical flow and match the drone frame at the right rotation to the satellite image
 from typing import Dict
-import os
-import time
-import copy
-import cv2
+import os, time, torch, copy, cv2, json, copy
 import json
 import numpy as np
+from enum import StrEnum
 from functools import cache
-from paths_ import output_dir, images_dir
+from paths_ import output_dir, images_dir, demo_output_dir
 from dvn.models.xfeat_.xfeat_methods import XFeatModel
 from dvn.models.xfeat_.xfeat_utils import save_features_to_folder, load_features_from_folder
 from dvn.utils.cv_utils.warp_corners_and_draw_matches import warp_corners_and_draw_matches, warp_and_draw_corners, draw_matches, draw_corners, warp_corners
 from dvn.utils.algebra_utils.homo import find_homography
 from dvn.utils.cv_utils.shape_degeneration import is_shape_degenerated
 from dvn.utils.cv_utils.shape_similarity import compute_shape_similarity
-
+from dvn.demos.estimate_rotation import estimate_inplane_rotation
+from dvn.utils.geometry_utils.polygon_utils import expand_polygon, points_inside_polygon, contract_polygon
 rotated_sat_dir = output_dir + '/rotated_sat_img'
 drone_frames_dir = images_dir + '/marco_sunny_frames'
-demo_output_dir = output_dir + '/demo_output'
 
 #TODO make the features be saved in folders: sparse_ and dense_ so that we can load them separately
 def get_sat_img_features(load_device="cuda", dense:bool = False) -> Dict[float, dict]:
@@ -203,13 +201,162 @@ def rotate_keypoints(keypoints: np.ndarray, angle_degrees: float, image_center: 
 
     return kpts_final
 
-#! ---------------- DEMO PIPELINES ----------------
-cache_path = os.path.join(demo_output_dir, 'demo0', 'cache.json')
+class BEST_ROTATION_SELECTION_STRATEGY(StrEnum):
+    MOST_MATCHES = 'most_matches'
+    MOST_SIMILAR_HOMOGRAPHY = 'most_similar_homography' # the H with the highest similarity score to the `current_best_H` parameter
+
+def select_best_rotation_from_matches(
+    mkpts_dict: Dict[float, tuple[np.ndarray, np.ndarray]],
+    current_best_H: np.ndarray | None,
+    strategy: BEST_ROTATION_SELECTION_STRATEGY = BEST_ROTATION_SELECTION_STRATEGY.MOST_MATCHES,
+    drone_frame: np.ndarray | None = None
+) -> tuple[float | None, np.ndarray | None, np.ndarray | None, int]:
+    """
+    Select the best satellite rotation based on feature matching results.
+
+    This method analyzes matched keypoints across different satellite image rotations
+    and selects the rotation based on the specified strategy.
+
+    ### Params:
+        mkpts_dict: Dict[float, tuple[np.ndarray, np.ndarray]]
+            Dictionary mapping rotation angles (in degrees) to tuples of matched keypoints.
+            Each tuple contains (mkpts_drone, mkpts_sat) where:
+            - mkpts_drone: nx2 array of matched keypoints in the drone frame
+            - mkpts_sat: nx2 array of matched keypoints in the satellite image
+        current_best_H: np.ndarray | None
+            The current best homography matrix (drone frame -> sat image). Used for MOST_SIMILAR_HOMOGRAPHY strategy.
+        strategy: BEST_ROTATION_SELECTION_STRATEGY
+            Strategy to use for selecting the best rotation. Defaults to MOST_MATCHES.
+        drone_frame: np.ndarray | None
+            The drone frame image. Required when using MOST_SIMILAR_HOMOGRAPHY strategy.
+
+    ### Returns:
+        tuple containing:
+        - best_rotation: float | None
+            The rotation angle (in degrees) selected by the strategy, or None if no matches found
+        - best_mkpts_drone: np.ndarray | None
+            The matched drone keypoints for the best rotation, or None if no matches
+        - best_mkpts_sat: np.ndarray | None
+            The matched satellite keypoints for the best rotation, or None if no matches
+        - best_match_count: int
+            The number of matches for the best rotation (0 if no matches found)
+    """
+    # Default to MOST_MATCHES if current_best_H is None
+    if strategy == BEST_ROTATION_SELECTION_STRATEGY.MOST_SIMILAR_HOMOGRAPHY and current_best_H is None:
+        print("⚠️  MOST_SIMILAR_HOMOGRAPHY strategy requested but current_best_H is None, defaulting to MOST_MATCHES")
+        strategy = BEST_ROTATION_SELECTION_STRATEGY.MOST_MATCHES
+
+    best_mkpts_drone = None
+    best_mkpts_sat = None
+    
+    if strategy == BEST_ROTATION_SELECTION_STRATEGY.MOST_MATCHES:
+        best_rotation = None
+        best_match_count = 0
+        
+        # Iterate through all rotations and their matched keypoints
+        for rotation_angle, (mkpts_drone, mkpts_sat) in mkpts_dict.items():
+            match_count = len(mkpts_drone)
+
+            # Update best match if this rotation has more matches
+            if match_count > best_match_count:
+                best_match_count = match_count
+                best_rotation = rotation_angle
+                best_mkpts_drone = mkpts_drone
+                best_mkpts_sat = mkpts_sat
+
+        return best_rotation, best_mkpts_drone, best_mkpts_sat, best_match_count
+
+    elif strategy == BEST_ROTATION_SELECTION_STRATEGY.MOST_SIMILAR_HOMOGRAPHY:
+        if drone_frame is None:
+            raise ValueError("drone_frame is required when using MOST_SIMILAR_HOMOGRAPHY strategy")
+
+        #* for Type checking: current_best_H should not be None at this point (checked earlier)
+        assert current_best_H is not None, "current_best_H should not be None when using MOST_SIMILAR_HOMOGRAPHY"
+
+        # Compute reference warped corners from current_best_H
+        reference_warped_corners = warp_corners(drone_frame, current_best_H) #TODO instead of computing `reference_warped_corners` here we could just pass the `current_best_warped_corners` parameter
+        if reference_warped_corners is None:
+            print("🍎Failed to warp corners with current_best_H, falling back to MOST_MATCHES")
+            
+            #* Fall back to MOST_MATCHES strategy
+            return select_best_rotation_from_matches(
+                mkpts_dict=mkpts_dict,
+                current_best_H=None,
+                strategy=BEST_ROTATION_SELECTION_STRATEGY.MOST_MATCHES,
+                drone_frame=None
+            )
+
+        best_rotation = None
+        best_similarity = -1.0  # Track highest similarity score
+        best_match_count = 0
+
+        # Iterate through all rotations and compute similarity to current_best_H
+        for rotation_angle, (mkpts_drone, mkpts_sat) in mkpts_dict.items():
+            match_count = len(mkpts_drone)
+
+            # Skip rotations with too few matches to compute homography
+            if match_count < 4:
+                continue
+
+            try:
+                # Compute homography for this rotation
+                H, inlier_mask, _ = find_homography(mkpts_drone, mkpts_sat)
+
+                if H is None:
+                    print(f"  Rotation {rotation_angle:6.1f}°: {match_count:4d} matches (homography failed)")
+                    continue
+
+                # Warp corners using this homography
+                candidate_warped_corners = warp_corners(drone_frame, H)
+
+                if candidate_warped_corners is None:
+                    print(f"  Rotation {rotation_angle:6.1f}°: {match_count:4d} matches (corner warping failed)")
+                    continue
+
+                # Compute similarity between candidate and reference warped corners
+                similarity = compute_shape_similarity(candidate_warped_corners, reference_warped_corners)
+
+                print(f"  Rotation {rotation_angle:6.1f}°: {match_count:4d} matches, similarity: {similarity:.3f}")
+
+                # Update best if this has higher similarity
+                if similarity > best_similarity:
+                    best_similarity = similarity
+                    best_rotation = rotation_angle
+                    best_mkpts_drone = mkpts_drone
+                    best_mkpts_sat = mkpts_sat
+                    best_match_count = match_count
+
+            except Exception as e:
+                print(f"  Rotation {rotation_angle:6.1f}°: Exception during homography computation: {e}")
+                continue
+
+        if best_rotation is not None:
+            print(f"🎯 Selected rotation {best_rotation}° with similarity {best_similarity:.3f} (MOST_SIMILAR_HOMOGRAPHY strategy)")
+
+        return best_rotation, best_mkpts_drone, best_mkpts_sat, best_match_count
+
+    else:
+        raise ValueError(f"Unknown strategy: {strategy}")
+
+#! -------------------------------- DEMO PIPELINES --------------------------------
+
+#* --------- CACHE ---------
+cache_path = os.path.join(demo_output_dir, 'demo0', 'cache_0.json')
+
+def set_cache_path(cache_file_name: str = "cache_0.json"):
+    global cache_path
+    cache_path = os.path.join(demo_output_dir, 'demo0', cache_file_name)
+    # Ensure the global cache_path points to an existing regular file.
+    # This enforces that callers only set the cache path to a real cache file.
+    if not os.path.exists(cache_path) or not os.path.isfile(cache_path):
+        raise FileNotFoundError(f"Cache file does not exist or is not a regular file: {cache_path}")
+    
+
 def read_frame_cache():
     """This file holds cached information, like what sat image rotation was best for each frame. We save it so we don't compute it again."""
     
     if not os.path.exists(cache_path):
-        return {}
+        raise FileNotFoundError(f"Cache file not found: {cache_path}")
     
     with open(cache_path, 'r') as f:
         cache_data = json.load(f)
@@ -320,6 +467,90 @@ def init_cache_from_initial_run(overwrite_existing_rotation: bool = False):
 
     print(f"\n✓ Cache initialization complete: {written_count} written, {skipped_count} skipped")
 
+#* --------- FEATURE SCORE ADJUSTMENT ---------
+def adjust_feature_scores_by_region(
+    features: dict,
+    reference_corners: np.ndarray,
+    outer_margin_factor: float = 0.2,
+    inner_margin_factor: float = 0.1,
+    outside_penalty: float = 0.5,
+    inside_boost: float = 1.5
+) -> dict:
+    """
+    Adjust keypoint scores based on their location relative to a reference region (defined by corners).
+
+    This function modifies feature scores to:
+    - Lower scores for keypoints outside the reference region (expanded by outer_margin_factor)
+    - Boost scores for keypoints inside the reference region (contracted by inner_margin_factor)
+
+    ### Params:
+        **features**: dict
+            Feature dictionary containing 'keypoints', 'descriptors', 'scores'
+            - keypoints: nx2 array of (x, y) coordinates
+            - scores: n-element array of confidence scores
+        **reference_corners**: np.ndarray
+            4x2 array of corner points defining the reference region (typically warped corners)
+        **outer_margin_factor**: float
+            Factor to expand the reference region for "outside" classification (default 0.1 = 10%)
+        **inner_margin_factor**: float
+            Factor to contract the reference region for "inside" classification (default 0.1 = 10%)
+        **outside_penalty**: float
+            Multiplier for scores of keypoints outside the outer margin (default 0.5 = halve the score)
+        **inside_boost**: float
+            Multiplier for scores of keypoints inside the inner margin (default 1.5 = 50% boost)
+
+    ### Returns:
+        dict: Modified features dictionary with adjusted scores
+    """
+    #* Create a deep copy to avoid modifying the original features
+    adjusted_features = copy.deepcopy(features) #! deep copy
+
+    keypoints = adjusted_features['keypoints']
+    scores = adjusted_features['scores']
+
+    # Convert keypoints to numpy array if it's a torch tensor
+    if hasattr(keypoints, 'cpu'):
+        keypoints_np = keypoints.cpu().numpy()
+    else:
+        keypoints_np = np.array(keypoints)
+
+    # Convert scores to numpy array if it's a torch tensor
+    if hasattr(scores, 'cpu'):
+        scores_np = scores.cpu().numpy()
+    else:
+        scores_np = np.array(scores)
+
+    # Create expanded (outer) and contracted (inner) polygons from the reference corners
+    outer_corners = expand_polygon(reference_corners, outer_margin_factor)
+    inner_corners = contract_polygon(reference_corners, inner_margin_factor)
+
+    # Check which keypoints are inside/outside the regions
+    inside_outer = points_inside_polygon(keypoints_np, outer_corners)
+    inside_inner = points_inside_polygon(keypoints_np, inner_corners)
+
+    # Apply score adjustments
+    # Points outside the outer margin: lower scores
+    outside_mask = ~inside_outer
+    scores_np[outside_mask] *= outside_penalty
+
+    # Points inside the inner margin: boost scores
+    scores_np[inside_inner] *= inside_boost
+
+    # Update the features with adjusted scores
+    if hasattr(scores, 'cpu'):
+        # If original was a torch tensor, convert back
+        
+        adjusted_features['scores'] = torch.from_numpy(scores_np).to(scores.device)
+    else:
+        adjusted_features['scores'] = scores_np
+
+    return adjusted_features
+
+
+
+
+
+#* --------- DEMO ---------
 def demo0():
     """
     Use the frames that are downsampled by 0.6
@@ -328,6 +559,7 @@ def demo0():
     2. pick the one with most matches
     3. save the visualization (with draw_matches) to demo_output_dir / demo0 / current_time
     """
+    set_cache_path('cache_best_homo.json') #! set the cache to use
     # init_cache_from_initial_run()
     # cache_data = None
     cache_data = read_frame_cache()
@@ -337,8 +569,8 @@ def demo0():
     # Create timestamped output directory for demo0
     # Human-readable, filesystem-safe timestamp (e.g. "2025-10-09_14-32-05")
     current_time: str = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
-    
-    demo0_output_dir = os.path.join(demo_output_dir, 'demo0', current_time)
+
+    demo0_output_dir = os.path.join(demo_output_dir, 'demo0', f'{current_time}_v1')
     os.makedirs(demo0_output_dir, exist_ok=True)
     print(f"Output directory created: {demo0_output_dir}")
 
@@ -371,14 +603,20 @@ def demo0():
     # Initialize XFeat model for feature detection and matching
     print("\nInitializing XFeat model...")
     xfeat_model = XFeatModel(top_k=4096)
-
-    #! rolling parameters and initial configuration
-    save_images_with_only_best_corners = True
+ 
+    #! --------------- rolling parameters and initial configuration ---------------
+    #
+    total_rotation = 0.0 # the summed relative rotations between frames, used to estimate the current absolute rotation
+    best_rotation_selection_strategy = BEST_ROTATION_SELECTION_STRATEGY.MOST_SIMILAR_HOMOGRAPHY
+    #
+    save_images_with_only_best_corners = False
+    # 
+    adjust_sat_feature_scores_based_on_current_estimation = True
     # ------------
     #! use_trust_fm_cache is debug only !!! never use in production!!  
     use_trust_fm_cache = False
     # ------------
-    similarity_threshold = 0.7 # if similarity > threshold, we consider the shapes be similar enough
+    similarity_threshold = 0.8 # if similarity > threshold, we consider the shapes be similar enough
     similarity_threshold_between_fm = 0.7 # if 2 feature matching outputs have similarity > this threshold, we consider them to be similar enough to each other so that we can trust the latest one 
     check_previous_frames_for_between_fm_similarity = 10 # how many previous frames to check for similarity between feature-matching corners
     # ------------
@@ -396,7 +634,7 @@ def demo0():
     #TODO remove the `current_best_warped_corners` parameter since it can always be inferred from the `current_best_H` parameter
     current_best_warped_corners = None # the current accepted warped corners of the latest fully processed drone frame on the satellite image
     current_best_H = None # the current accepted homography matrix (drone frame -> sat image)
-    #! rolling parameters and initial configuration
+    #! --------------- rolling parameters and initial configuration ---------------
     
     def compute_new_frame_sat_homography(prev_frame__sat_img_H, inter_frame_H_):
         if prev_frame__sat_img_H is None or inter_frame_H_ is None:
@@ -432,9 +670,6 @@ def demo0():
                 drone_features
             )
 
-            inter_frame_match_count = len(mkpts_prev)
-            print(f"Inter-frame matches: {inter_frame_match_count}")
-
             #* Compute homography between consecutive frames
             try:
                 inter_frame_H, _, _ = find_homography(mkpts_prev, mkpts_current)
@@ -442,6 +677,25 @@ def demo0():
                     print("⚠️  Inter-frame homography estimation failed")
             except Exception as e:
                 print(f"⚠️  Exception during inter-frame homography: {e}")
+                
+            #* compute the relative rotation between frames
+            try:
+                rotation_result = estimate_inplane_rotation(
+                    mkpts_0=mkpts_prev,
+                    mkpts_1=mkpts_current,
+                )
+
+                # Use the refined angle if available, otherwise use the RANSAC angle
+                relative_rotation_deg = rotation_result.get('angle_refined_deg', rotation_result['angle_deg'])
+                total_rotation += relative_rotation_deg # Add the relative rotation to the total rotation
+
+                # Append to rotation.txt file in the output directory
+                rotation_txt_path = os.path.join(demo0_output_dir, 'rotation.txt')
+                with open(rotation_txt_path, 'a') as f:
+                    f.write(f"{frame_idx}: {total_rotation:.6f}\n")
+
+            except Exception as e:
+                print(f"⚠️  Failed to estimate rotation: {e}")
 
         #! rotation check
         # Check if frame already has a cached best rotation
@@ -476,26 +730,47 @@ def demo0():
         else:
             #* No cached rotation - match against all satellite rotations
             print("🔍 No cached rotation, searching all rotations...")
+
+            # Build dictionary of matched keypoints for all rotations
+            mkpts_all_rotations: Dict[float, tuple[np.ndarray, np.ndarray]] = {}
+
             for rotation_angle in sorted(sat_features_dict.keys()):
                 sat_features = sat_features_dict[rotation_angle]
 
-                #* Match features using sparse matching
+                # Adjust feature scores based on proximity to expected region
+                if adjust_sat_feature_scores_based_on_current_estimation == True and current_best_warped_corners is not None and initialization_complete == True:
+                    sat_features_adjusted = adjust_feature_scores_by_region(
+                        sat_features,
+                        current_best_warped_corners,
+                        outer_margin_factor=0.2,
+                        inner_margin_factor=0.1,
+                        outside_penalty=0.25,
+                        inside_boost=1.5
+                    )
+                else:
+                    sat_features_adjusted = sat_features
+
+                #* Match features using sparse matching (use adjusted features)
                 mkpts_drone, mkpts_sat = xfeat_model.xfeat_match_sparse_default(
                     drone_features,
-                    sat_features
+                    sat_features_adjusted
                 )
 
                 match_count = len(mkpts_drone)
                 print(f"  Rotation {rotation_angle:6.1f}°: {match_count:4d} matches")
 
-                #* Update best match if this rotation has more matches
-                if match_count > best_match_count:
-                    best_match_count = match_count
-                    best_rotation = rotation_angle
-                    best_mkpts_drone = mkpts_drone
-                    best_mkpts_sat = mkpts_sat
+                # Store the matched keypoints for this rotation
+                mkpts_all_rotations[rotation_angle] = (mkpts_drone, mkpts_sat)
 
-            # Cache the newly discovered best rotation for future runs
+            #* select the best rotation
+            best_rotation, best_mkpts_drone, best_mkpts_sat, best_match_count = select_best_rotation_from_matches(
+                mkpts_dict=mkpts_all_rotations, 
+                current_best_H=current_best_H,
+                strategy=best_rotation_selection_strategy,
+                drone_frame=drone_frame,
+            )
+
+            #* Cache the newly discovered best rotation for future runs
             if best_rotation is not None:
                 write_frame_cache(frame_index=frame_idx, best_rotation=best_rotation)
 
@@ -607,6 +882,8 @@ def demo0():
                             print(f"🐝 Current FM corners are similar enough to previous frames (similarity: {max_similarity:.3f} >= {similarity_threshold_between_fm}), updating current_best_H")
                             current_best_H = H.copy()
                             current_best_warped_corners = warped_corners.copy()
+                            initialization_complete = True # if we trust FM based on previous FM similarity, we can consider initialization complete
+                            print(f"🎉🎉🎉 Initialization complete! 🎉🎉🎉")
                     
                     #! inter-frame agreement logic
                     if trusted_fm == False and inter_frame_H is not None:
