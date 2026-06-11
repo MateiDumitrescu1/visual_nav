@@ -6,7 +6,6 @@ import os
 import cv2
 from pathlib import Path
 from PIL import Image
-import matplotlib.pyplot as plt
 import subprocess
 import shutil
 import imageio as imio
@@ -445,62 +444,5 @@ def rotate_and_save_with_angle_step(img_path: str, output_dir: str, angle_step: 
         filename = f"{base_filename}_rotated_{angle:.0f}.png"
         save_image_cv2(img, output_dir, filename)
 
-def execute_():
-    # Example usage of rotate_and_save_with_angle_step
-    input_image_path = "../../../../data/images/sat.png"
-    output_directory = "../../../../data/output/rotated_sat_img"
-    angle_increment = 5.0  # Rotate every 15 degrees
-
-    rotate_and_save_with_angle_step(input_image_path, output_directory, angle_increment)
-    print("Finished execution!")
-
-#! ---------------- TESTING ----------------
-
-def test_():
-    sat_img_path = "../../../../data/images/sat.png"
-    sat_img = cv2.imread(sat_img_path)
-    if sat_img is None:
-        raise FileNotFoundError(f"Image not found at {sat_img_path}")
-    
-    def test_generate_rotations():
-        angles_45 = [float(i) for i in range(0, 360, 45)]
-        # pyrefly: ignore  # bad-argument-type
-        rotated_images = generate_rotations(sat_img, angles_45)
-        for i, img in enumerate(rotated_images):
-            plt.subplot(3, 3, i + 1)
-            plt.imshow(img)
-            plt.axis('off')
-        plt.show()
-        
-    def side_by_side_test():
-        cat_img_path = "./test_images/cat1.jpg"
-        sat_img_path = "./test_images/sat.png"
-        cat_img = cv2.imread(cat_img_path)
-        sat_img = cv2.imread(sat_img_path)
-        # pyrefly: ignore  # bad-argument-type
-        combined_image = put_images_side_by_side(cat_img, sat_img, pad_color=(0, 0, 0))
-        plt.imshow(combined_image)
-        plt.axis('off')
-        plt.show()
-        
-    def test_downsample_pyramid():
-        
-        img = cv2.imread(sat_img_path)
-        
-        pyramid = downsample_pyramid(img, scales=[0.13, 0.20, 0.33])
-        for i, img in enumerate(pyramid):
-            print(img.shape)
-            plt.subplot(1, len(pyramid), i + 1)
-            plt.imshow(img)
-            plt.axis('off')
-        plt.show()
-    
-    #! run the test methods
-    test_generate_rotations()
-    
-    print("All tests passed!")
-    
 if __name__ == "__main__":
-    # test_()
-    execute_()
-    
+    raise SystemExit("Import image utility functions and pass local image paths explicitly.")

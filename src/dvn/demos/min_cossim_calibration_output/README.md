@@ -1,1 +1,0 @@
-folder used to save the results of the feature matching using different `min_cossim` values

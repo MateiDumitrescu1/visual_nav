@@ -1,14 +1,13 @@
 from pathlib import Path
 from time import time
+from functools import cache
 import numpy as np
 from PIL import Image
 import torch
 from transformers import AutoImageProcessor, AutoModelForDepthEstimation
 import matplotlib.pyplot as plt
 
-drone_img_path = "../../../../../data/images/marco_sunny_frames/original/frame_000236.jpg"
-sat_img_path = "../../../../../data/images/sat.png"
-
+@cache
 def load_model(model_id: str = "depth-anything/Depth-Anything-V2-Small-hf"):
     """Load the depth estimation model and processor."""
     processor = AutoImageProcessor.from_pretrained(model_id)
@@ -16,9 +15,11 @@ def load_model(model_id: str = "depth-anything/Depth-Anything-V2-Small-hf"):
     model.eval()
     return processor, model
 
-processor, model = load_model()
-
-def estimate_depth(image: Image.Image, kwargs: dict | None = None) -> torch.Tensor:
+def estimate_depth(
+    image: Image.Image,
+    model_id: str = "depth-anything/Depth-Anything-V2-Small-hf",
+    kwargs: dict | None = None,
+) -> torch.Tensor:
     """
     Estimate depth from an input image.
 
@@ -32,6 +33,7 @@ def estimate_depth(image: Image.Image, kwargs: dict | None = None) -> torch.Tens
     if kwargs is None:
         kwargs = {}
         
+    processor, model = load_model(model_id)
     inputs = processor(images=image, return_tensors="pt", **kwargs)
 
     with torch.no_grad():
@@ -96,14 +98,9 @@ def visualize_depth(depth_map: torch.Tensor, original_image: Image.Image, save_p
 
     plt.show()
 
-#! ---------------- TESTING ----------------
-
-def test_dav2():
+def test_dav2(image_path: str | Path, output_path: str | Path | None = None) -> None:
     """Test depth estimation on the test image and visualize results."""
-    # Load test image
-    test_img_path_to_use = sat_img_path 
-    
-    image_path = Path(__file__).parent / test_img_path_to_use
+    image_path = Path(image_path)
     image = Image.open(image_path).convert("RGB")
 
     print(f"Running depth estimation on: {image_path}")
@@ -115,11 +112,10 @@ def test_dav2():
     print(f"depth estimation took {time() - start_time:.2f} seconds")
     
     # Visualize results
-    output_path = Path(__file__).parent / "test_output.png"
-    visualize_depth(depth_map, original_image=image, save_path=output_path)
+    save_path = Path(output_path) if output_path is not None else Path("depth_output.png")
+    visualize_depth(depth_map, original_image=image, save_path=save_path)
 
     print("Test completed successfully!")
 
 if __name__ == "__main__":
-    test_dav2()
-    print("All tests passed!")
+    raise SystemExit("Import test_dav2 and pass a local image path to run this experiment.")

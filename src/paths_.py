@@ -1,12 +1,14 @@
-import os, sys
+import os
+import sys
 from enum import StrEnum
-#! this file defines important folder paths used across the project
+# This file defines project-relative paths used across the package.
+# The paths are intentionally not validated at import time so a fresh public
+# clone can import the package before local datasets and model files are added.
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root_dir = os.path.abspath(os.path.join(current_dir, '..', ))
-# Add root directory to Python path so this module can be imported from anywhere
 
-def check_dir_exists(dir_path: str):
+def check_dir_exists(dir_path: str) -> None:
     if not os.path.exists(dir_path):
         raise ValueError(f"Directory does not exist: {dir_path}")
 
@@ -15,24 +17,17 @@ if project_root_dir not in sys.path:
 
 #! data dir
 data_dir = os.path.abspath(os.path.join(project_root_dir, 'data'))
-check_dir_exists(data_dir)
 
 #! main dirs in the `data` folder
 video_dir = os.path.abspath(os.path.join(data_dir, 'videos'))
-check_dir_exists(video_dir)
 images_dir = os.path.abspath(os.path.join(data_dir, 'images'))
-check_dir_exists(images_dir)
 models_dir = os.path.abspath(os.path.join(data_dir, 'models'))
-check_dir_exists(models_dir)
 output_dir = os.path.abspath(os.path.join(data_dir, 'output'))
-check_dir_exists(output_dir)
 
 demo_output_dir = os.path.abspath(os.path.join(output_dir, 'demo_output'))
-check_dir_exists(demo_output_dir)
 
 #! test image sets dir
 test_image_sets_dir = os.path.abspath(os.path.join(images_dir, 'test_image_sets'))
-check_dir_exists(test_image_sets_dir)
 
 
 class TEST_SET(StrEnum):

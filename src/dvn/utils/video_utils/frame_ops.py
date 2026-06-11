@@ -2,7 +2,6 @@ import os, shutil, cv2
 from pathlib import Path
 import subprocess
 import numpy as np
-from paths_ import data_dir, output_dir
 #!
 def get_frames_of_video(
     video_path: str | os.PathLike,
@@ -157,44 +156,5 @@ def stitch_frames_into_video(
     writer.release()
 
 
-#! ------------------ EXECUTION ------------------
-def compile_demo_video():
-    """
-    Read all images from the demo output directory, stitch them into a video,
-    and save the video in the local directory.
-    """
-    # time = "2025-10-10_12-40-57"
-    # 2025-10-10_12-40-57
-    # time = "2025-10-10_13-18-00"
-    time = "2025-10-10_13-49-10"
-    # images_folder: str = output_dir + "/demo_output" + "/demo0" + "/2025-10-10_11-02-23"
-    images_folder: str = output_dir + "/demo_output" + "/demo0" + f"/{time}"
-
-    # Define output video name and save location (current working directory)
-    output_video_name = f"demo_video_{time}.mp4"
-    output_folder = "."  # Current directory
-
-    # Stitch frames into video using the existing function
-    stitch_frames_into_video(
-        folder_path=images_folder,
-        output_folder=output_folder,
-        output_file_name=output_video_name,
-        fps=10,  # Adjust fps as needed
-        codec="mp4v"
-    )
-
-    print(f"Video saved to: {Path(output_folder).resolve() / output_video_name}")
-
-
-#! ------------------ TESTING ------------------
-
-from paths_ import output_dir
-def test_get_frames_of_video():
-    video_path = "../../../../data/videos/marco_video_sunny.MP4"
-    out_dir = f"{output_dir}/test_video_frames"
-    get_frames_of_video(video_path, out_dir, fps=5, overwrite=True, verbose=True)
-
 if __name__ == "__main__":
-    # test_get_frames_of_video()
-    compile_demo_video()
-    print("Completed!")
+    raise SystemExit("Import get_frames_of_video or stitch_frames_into_video and pass local paths.")

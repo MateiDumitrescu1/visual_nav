@@ -21,7 +21,7 @@ min_cossim_coarse_DEFAULT = -1
 
 class XFEAT_MODELS(StrEnum):
     DEFAULT_PRETRAINED = 'default_pretrained'
-    STEERER_PRETRAINED = 'steerer_pretrained' #~ https://github.com/verlab/accelerated_features/issues/32?utm_source=chatgpt.com
+    STEERER_PRETRAINED = 'steerer_pretrained'
 
 
 
@@ -39,6 +39,11 @@ def get_default_pretrained_xfeat_model(top_k: int = 4096):
 def get_steerer_pretrained_xfeat_model(top_k: int = 4096):
     xfeat = torch.hub.load('verlab/accelerated_features', 'XFeat', pretrained = False, top_k = top_k)
     model_path = os.path.join(models_dir, 'xfeat_perm_steer.pth')
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(
+            f"Steerer XFeat weights not found at {model_path}. "
+            "Place xfeat_perm_steer.pth under data/models or use DEFAULT_PRETRAINED."
+        )
     sd = torch.load(model_path, map_location='cpu')
     for key in list(sd):
         sd['net.' + key] = sd[key]

@@ -1,4 +1,11 @@
+# Local datasets, generated artifacts, and model weights.
 rotated_sat_img
+data/images/
+data/videos/
+data/models/
+data/output/
+*.npy
+*.npz
 
 # Ignore all video and image files
 *.mp4

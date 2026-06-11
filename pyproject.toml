@@ -3,26 +3,23 @@ name = "dvn"
 dynamic = ["version"]                                              # let setuptools-scm handle versioning
 description = "DVN: Computer Vision for Drones"
 readme = "README.md"
-requires-python = "==3.11"
+requires-python = ">=3.11,<3.13"
 
 dependencies = [
-    "ultralytics",
     "opencv-python",
-    "httpx",
     "scikit-learn",
     "tqdm",
     "imageio",
-    "pyrefly",
     "onnxruntime",
     "kornia", # for LightGlue.
-    "hdbscan", #for HDBSCAN clustering.
+    "hdbscan", # for HDBSCAN clustering.
     "torch",
     "torchvision",
-    "gradio_imageslider",
-    "gradio==4.29.0",
     "transformers",
     "pillow",
     "accelerate",
+    "matplotlib",
+    "requests",
 ]
 
 [tool.mypy]
@@ -36,13 +33,14 @@ build-backend = "setuptools.build_meta"
 # ⬇⬇⬇  THIS tells setuptools what to install  ⬇⬇⬇
 [tool.setuptools]
 package-dir = { "" = "src" } # “top‑level imports come from src/”
+py-modules = ["paths_"]
 
 [tool.setuptools_scm]
 fallback_version = "0.2.0"
 
 [tool.setuptools.packages.find]
 where = ["src"]         # search only there
-include = ["dvn*", "sat*"] # pick up both packages
+include = ["dvn*"]
 
 [tool.pyrefly]
 python-version = "3.11.0"
