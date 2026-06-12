@@ -21,6 +21,7 @@ data/output/
 *.mpeg
 *.3gp
 *.gif
+!demo_preview.gif
 *.png
 *.jpg
 *.jpeg

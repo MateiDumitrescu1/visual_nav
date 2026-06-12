@@ -1,4 +1,6 @@
-<video src="./demo_video_2025-10-10_13-49-10_compressed.mp4" controls muted playsinline width="100%"></video>
+[![Drone Visual Navigation demo](./demo_preview.gif)](./demo_video_2025-10-10_13-49-10_compressed.mp4)
+
+[Watch the full demo video](./demo_video_2025-10-10_13-49-10_compressed.mp4)
 
 # Drone Visual Navigation
 
